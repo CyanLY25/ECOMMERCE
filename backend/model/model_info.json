@@ -1,0 +1,12 @@
+{
+    "model": "MLP",
+    "date": "2026-07-09T21:58:09.658055",
+    "metrics": {
+        "rmse": 6.707147560599678,
+        "mae": 5.5076751708984375,
+        "mape": 208.74984741210938,
+        "r2": -0.03934049606323242
+    },
+    "path": "C:\\Users\\milto\\OneDrive\\Desktop\\7 CICLO\\1 ING SOFTWARE\\WEBWO DE SANTONS\\ECOMMERCE\\backend\\model\\best_model.keras",
+    "version": "1.0"
+}

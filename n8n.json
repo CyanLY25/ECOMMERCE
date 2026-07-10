@@ -1,0 +1,994 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 🛒 FLUJO DE NUEVO PEDIDO - E-COMMERCE\n\n### Funcionamiento:\n1. **Trigger de Supabase**: Se activa automáticamente cuando se inserta un nuevo registro en la tabla `orders`\n2. **Validación**: Valida y normaliza los datos del pedido (teléfono, email, etc.)\n3. **Transformación**: Prepara los datos en diferentes formatos (WhatsApp, Email, Sheets)\n4. **Notificaciones paralelas**:\n   - WhatsApp al cliente con detalles del pedido\n   - Email al vendedor con toda la información\n   - Registro en Google Sheets para tracking\n5. **Combinación y log**: Combina los resultados y genera log de éxito\n\n### Manejo de errores:\n- Si hay error en validación, se envía email de alerta al vendedor\n- Los nodos tienen `continueOnFail: true` para no detener el flujo\n\n### Configuración necesaria:\n1. **Supabase Trigger**: Configurar webhook en Supabase para tabla `orders`\n2. **Twilio**: Credenciales de Twilio con número de WhatsApp Business\n3. **Gmail**: OAuth2 de Gmail configurado\n4. **Google Sheets**: Crear spreadsheet con hoja \"Pedidos\" y headers correspondientes",
+        "height": 741,
+        "width": 409,
+        "color": 7
+      },
+      "id": "0c0eaecf-cfb2-4eeb-8e45-967fc7d806ad",
+      "name": "📝 Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -720,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "nuevo-pedido-supabase",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "5c298133-6e63-4d72-b179-c37dfac9dda8",
+      "name": "🎯 Webhook - Nuevo Pedido",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -128,
+        400
+      ],
+      "webhookId": "webhook-nuevo-pedido"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body || $input.item.json;\nconst order = body.record || body;\n\nif (!order || Object.keys(order).length === 0) {\n  throw new Error('❌ No se recibieron datos del pedido');\n}\n\nfunction validarTelefono(phone) {\n  if (!phone) return false;\n  const regex = /^(\\+51|51)?9\\d{8}$/;\n  return regex.test(phone.replace(/\\s/g, '').replace(/-/g, ''));\n}\n\nfunction normalizarTelefono(phone) {\n  const cleaned = phone.replace(/\\s/g, '').replace(/-/g, '');\n  if (cleaned.startsWith('+51')) return cleaned;\n  if (cleaned.startsWith('51')) return '+' + cleaned;\n  if (cleaned.startsWith('9')) return '+51' + cleaned;\n  return phone;\n}\n\nfunction validarEmail(email) {\n  if (!email) return false;\n  const regex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\n  return regex.test(email);\n}\n\nconst errores = [];\n\nif (!order.customer_name || order.customer_name.trim() === '') {\n  errores.push('Nombre del cliente es obligatorio');\n}\n\nif (!order.customer_phone || !validarTelefono(order.customer_phone)) {\n  errores.push('Teléfono inválido');\n}\n\nif (!order.customer_email || !validarEmail(order.customer_email)) {\n  errores.push('Email inválido');\n}\n\nif (!order.total_amount || order.total_amount <= 0) {\n  errores.push('Monto total inválido');\n}\n\nif (!order.items || !Array.isArray(order.items) || order.items.length === 0) {\n  errores.push('El pedido debe tener al menos un producto');\n}\n\nif (errores.length > 0) {\n  return {\n    json: {\n      ...order,\n      error: errores.join(', '),\n      has_error: true\n    }\n  };\n}\n\nconst phoneNormalized = normalizarTelefono(order.customer_phone);\nconst orderNumber = order.id ? order.id.substring(0, 8).toUpperCase() : 'ORD-' + Date.now().toString().substring(7);\nconst formattedTotal = `S/ ${parseFloat(order.total_amount).toFixed(2)}`;\nconst firstName = order.customer_name.split(' ')[0];\n\nlet totalItems = 0;\nif (order.items && Array.isArray(order.items)) {\n  totalItems = order.items.reduce((sum, item) => sum + (parseInt(item.quantity) || 0), 0);\n}\n\nconst orderDate = new Date(order.created_at || Date.now()).toLocaleString('es-PE', {\n  day: '2-digit',\n  month: '2-digit',\n  year: 'numeric',\n  hour: '2-digit',\n  minute: '2-digit'\n});\n\nconst deliveryTime = new Date(Date.now() + 45 * 60000).toLocaleTimeString('es-PE', {\n  hour: '2-digit',\n  minute: '2-digit',\n  hour12: true\n});\n\nreturn {\n  json: {\n    ...order,\n    customer_phone_normalized: phoneNormalized,\n    order_number: orderNumber,\n    formatted_total: formattedTotal,\n    customer_first_name: firstName,\n    total_items: totalItems,\n    order_date: orderDate,\n    delivery_time: deliveryTime,\n    status: order.status || 'Pendiente',\n    has_error: false\n  }\n};"
+      },
+      "id": "82abe13e-4845-4a21-814d-c14d46472603",
+      "name": "✅ Validar y Normalizar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        96,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const order = $input.item.json;\n\nlet productListWhatsApp = '';\nif (order.items && Array.isArray(order.items)) {\n  productListWhatsApp = order.items.map((item, index) => {\n    const subtotal = (parseFloat(item.price || item.unit_price || 0) * parseInt(item.quantity || 0)).toFixed(2);\n    return `  ${index + 1}. ${item.name || item.product_name} x${item.quantity}\\n     S/ ${subtotal}`;\n  }).join('\\n\\n');\n}\n\nlet productListHTML = '';\nif (order.items && Array.isArray(order.items)) {\n  productListHTML = order.items.map((item, index) => {\n    const unitPrice = parseFloat(item.price || item.unit_price || 0);\n    const quantity = parseInt(item.quantity || 0);\n    const subtotal = (unitPrice * quantity).toFixed(2);\n    return `\n    <tr>\n      <td style=\"padding: 10px; border-bottom: 1px solid #e5e7eb;\">${index + 1}</td>\n      <td style=\"padding: 10px; border-bottom: 1px solid #e5e7eb; font-weight: 500;\">${item.name || item.product_name}</td>\n      <td style=\"padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: center;\">${quantity}</td>\n      <td style=\"padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right;\">S/ ${unitPrice.toFixed(2)}</td>\n      <td style=\"padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: 600; color: #059669;\">S/ ${subtotal}</td>\n    </tr>`;\n  }).join('');\n}\n\nlet productListSimple = '';\nif (order.items && Array.isArray(order.items)) {\n  productListSimple = order.items.map((item, index) => {\n    const subtotal = (parseFloat(item.price || item.unit_price || 0) * parseInt(item.quantity || 0)).toFixed(2);\n    return `${index + 1}. ${item.name || item.product_name} x${item.quantity} - S/ ${subtotal}`;\n  }).join('\\n');\n}\n\nlet fullAddress = order.shipping_address || 'Dirección no especificada';\nif (typeof order.shipping_address === 'object' && order.shipping_address !== null) {\n  const addr = order.shipping_address;\n  const parts = [addr.street, addr.district, addr.city, addr.postal_code].filter(p => p && p.trim() !== '');\n  fullAddress = parts.length > 0 ? parts.join(', ') : 'Dirección no especificada';\n}\n\nconst reference = (typeof order.shipping_address === 'object' && order.shipping_address?.reference) ? order.shipping_address.reference : '';\n\nreturn {\n  json: {\n    ...order,\n    product_list_whatsapp: productListWhatsApp,\n    product_list_html: productListHTML,\n    product_list_simple: productListSimple,\n    full_address: fullAddress,\n    address_reference: reference\n  }\n};"
+      },
+      "id": "eb36459d-1c42-40f5-9efb-f0189682d0e2",
+      "name": "🔄 Transformar Datos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "from": "whatsapp:+14155238886",
+        "to": "=whatsapp:{{ $json.customer_phone_normalized }}",
+        "message": "=🎉 ¡Hola {{ $json.customer_first_name }}! Tu pedido ha sido recibido\n\n━━━━━━━━━━━━━━━━━━━━━\n📦 *PEDIDO #{{ $json.order_number }}*\n━━━━━━━━━━━━━━━━━━━━━\n\n🛒 *PRODUCTOS ({{ $json.total_items }} items):*\n\n{{ $json.product_list_whatsapp }}\n\n━━━━━━━━━━━━━━━━━━━━━\n💰 *TOTAL: {{ $json.formatted_total }}*\n━━━━━━━━━━━━━━━━━━━━━\n\n📍 *DIRECCIÓN DE ENTREGA:*\n{{ $json.full_address }}\n{{ $json.address_reference ? '🏠 Ref: ' + $json.address_reference : '' }}\n\n⏰ *Tiempo estimado:* 45 minutos\n🚚 *Llegada aprox:* {{ $json.delivery_time }}\n\n✅ *Estado:* {{ $json.status }}\n\n━━━━━━━━━━━━━━━━━━━━━\n¡Gracias por tu compra! 💚\n\n_Pedido realizado el {{ $json.order_date }}_",
+        "options": {}
+      },
+      "id": "36680094-6ab9-4f83-941b-39ed93b238fb",
+      "name": "📱 WhatsApp - Cliente",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        560,
+        272
+      ],
+      "credentials": {
+        "twilioApi": {
+          "id": "YN6eOXUESxziW3id",
+          "name": "Twilio account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "sendTo": "cjondec@unitru.edu.pe",
+        "subject": "=¡Nuevo Pedido por {{ $json.formatted_total }}!",
+        "message": "=<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UTF-8\">\n  <style>\n    body { font-family: Arial, sans-serif; background-color: #f5f5f5; margin: 0; padding: 20px; }\n    .container { max-width: 600px; margin: 0 auto; background-color: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }\n    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }\n    .header h1 { margin: 0; font-size: 24px; }\n    .content { padding: 30px; }\n    .alert-box { background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 15px; margin-bottom: 20px; border-radius: 4px; }\n    .info-section { margin-bottom: 25px; }\n    .info-section h3 { color: #374151; margin: 0 0 10px 0; font-size: 16px; }\n    .info-row { margin: 8px 0; color: #4b5563; }\n    .info-row strong { color: #1f2937; }\n    table { width: 100%; border-collapse: collapse; margin: 15px 0; }\n    th { background-color: #f9fafb; padding: 10px; text-align: left; font-size: 12px; color: #6b7280; text-transform: uppercase; border-bottom: 2px solid #e5e7eb; }\n    td { padding: 10px; color: #374151; }\n    .total-row { background-color: #f9fafb; font-weight: bold; }\n    .total-row td { font-size: 18px; color: #059669; }\n    .footer { background-color: #f9fafb; padding: 20px; text-align: center; color: #6b7280; font-size: 12px; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>🔔 NUEVO PEDIDO RECIBIDO</h1>\n      <p style=\"margin: 10px 0 0 0; font-size: 14px; opacity: 0.9;\">¡Tienes un nuevo pedido en tu tienda!</p>\n    </div>\n    <div class=\"content\">\n      <div class=\"alert-box\">\n        <div style=\"font-size: 18px; font-weight: bold; color: #991b1b; margin-bottom: 5px;\">Pedido #{{ $json.order_number }}</div>\n        <div style=\"font-size: 24px; font-weight: bold; color: #059669;\">{{ $json.formatted_total }}</div>\n        <div style=\"font-size: 12px; color: #6b7280; margin-top: 5px;\">{{ $json.order_date }}</div>\n      </div>\n      <div class=\"info-section\">\n        <h3>👤 INFORMACIÓN DEL CLIENTE</h3>\n        <div class=\"info-row\"><strong>Nombre:</strong> {{ $json.customer_name }}</div>\n        <div class=\"info-row\"><strong>Teléfono:</strong> {{ $json.customer_phone_normalized }}</div>\n        <div class=\"info-row\"><strong>Email:</strong> {{ $json.customer_email }}</div>\n      </div>\n      <div class=\"info-section\">\n        <h3>🛒 PRODUCTOS PEDIDOS ({{ $json.total_items }} items)</h3>\n        <table>\n          <thead>\n            <tr>\n              <th>#</th>\n              <th>Producto</th>\n              <th style=\"text-align: center;\">Cant.</th>\n              <th style=\"text-align: right;\">Precio Unit.</th>\n              <th style=\"text-align: right;\">Subtotal</th>\n            </tr>\n          </thead>\n          <tbody>\n            {{ $json.product_list_html }}\n          </tbody>\n          <tfoot>\n            <tr class=\"total-row\">\n              <td colspan=\"4\" style=\"text-align: right; padding-right: 15px;\">TOTAL:</td>\n              <td style=\"text-align: right;\">{{ $json.formatted_total }}</td>\n            </tr>\n          </tfoot>\n        </table>\n      </div>\n      <div class=\"info-section\">\n        <h3>📍 DATOS DE ENTREGA</h3>\n        <div class=\"info-row\"><strong>Dirección:</strong> {{ $json.full_address }}</div>\n        {{ $json.address_reference ? '<div class=\"info-row\"><strong>Referencia:</strong> ' + $json.address_reference + '</div>' : '' }}\n        <div class=\"info-row\"><strong>Hora estimada:</strong> {{ $json.delivery_time }}</div>\n        <div class=\"info-row\"><strong>Estado:</strong> <span style=\"color: #f59e0b; font-weight: bold;\">{{ $json.status }}</span></div>\n      </div>\n    </div>\n    <div class=\"footer\">\n      <p style=\"margin: 0;\">Sistema automático de notificaciones - n8n</p>\n      <p style=\"margin: 5px 0 0 0;\">Pedido ID: {{ $json.id }}</p>\n    </div>\n  </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "id": "5056e7f4-7a1a-4083-a3f8-44f3b7ddb444",
+      "name": "📧 Email - Vendedor",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        560,
+        480
+      ],
+      "webhookId": "c9151ee9-703c-44b0-a968-ef4056e64d07",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "6tyyfx3uu6n5WTvD",
+          "name": "Gmail account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1zGOrm27WhjeScrbvNDJTsixr2vHN8w4zCuk0Fr4Pha8",
+          "mode": "list",
+          "cachedResultName": "Ecommerce",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1zGOrm27WhjeScrbvNDJTsixr2vHN8w4zCuk0Fr4Pha8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1zGOrm27WhjeScrbvNDJTsixr2vHN8w4zCuk0Fr4Pha8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "items",
+              "displayName": "items",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "total_amount",
+              "displayName": "total_amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "customer_name",
+              "displayName": "customer_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "customer_email",
+              "displayName": "customer_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "customer_phone",
+              "displayName": "customer_phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "shipping_address",
+              "displayName": "shipping_address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "customer_phone_normalized",
+              "displayName": "customer_phone_normalized",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "order_number",
+              "displayName": "order_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "formatted_total",
+              "displayName": "formatted_total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "customer_first_name",
+              "displayName": "customer_first_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "total_items",
+              "displayName": "total_items",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "order_date",
+              "displayName": "order_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "delivery_time",
+              "displayName": "delivery_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "has_error",
+              "displayName": "has_error",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "product_list_whatsapp",
+              "displayName": "product_list_whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "product_list_html",
+              "displayName": "product_list_html",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "product_list_simple",
+              "displayName": "product_list_simple",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "full_address",
+              "displayName": "full_address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "address_reference",
+              "displayName": "address_reference",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "sheet_row",
+              "displayName": "sheet_row",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "c1e0bccb-8a89-4db8-8510-9484f28d5cc6",
+      "name": "📊 Guardar en Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        560,
+        672
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "FwZ0euSqO70jr4JJ",
+          "name": "Google Sheets account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {},
+      "id": "cd607635-13a3-4f11-929c-fd7d79ae57fa",
+      "name": "🔗 Combinar Resultados",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        816,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  success: true,\n  message: 'Pedido procesado exitosamente',\n  order_id: $json.id,\n  order_number: $json.order_number,\n  notifications: {\n    whatsapp: 'enviado',\n    email: 'enviado',\n    sheets: 'guardado'\n  },\n  timestamp: new Date().toISOString()\n} }}",
+        "options": {}
+      },
+      "id": "04d17470-f6ce-463b-8718-3543c23a6428",
+      "name": "✅ Responder Éxito",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1040,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "error-check",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "fb507e67-f6cb-42dd-ac16-6a0411923c99",
+      "name": "⚠️ ¿Hay Error?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        96,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "cjondec@unitru.edu.pe",
+        "subject": "=❌ ERROR: Pedido no procesado",
+        "message": "=⚠️ ERROR EN SISTEMA DE PEDIDOS\n\nSe intentó procesar un nuevo pedido pero ocurrió un error:\n\n{{ $json.error || 'Error desconocido' }}\n\n━━━━━━━━━━━━━━━━━━━━━━━━\nDATOS RECIBIDOS:\n{{ JSON.stringify($json, null, 2) }}\n\n━━━━━━━━━━━━━━━━━━━━━━━━\nFecha: {{ new Date().toISOString() }}\nSistema: n8n - Workflow de Pedidos",
+        "options": {}
+      },
+      "id": "82b2cd57-650e-4c0a-bb9d-a20a043dc2dd",
+      "name": "🚨 Notificar Error",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        320,
+        720
+      ],
+      "webhookId": "c94238b8-f30c-48f5-b81b-bb77dc2e9eac",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "6tyyfx3uu6n5WTvD",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  success: false,\n  error: 'Error de validación',\n  message: $json.error || 'Error desconocido',\n  timestamp: new Date().toISOString()\n} }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "b466ac96-3ed7-4882-bd3b-6ed8d491ef77",
+      "name": "❌ Responder Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        576,
+        896
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Flujo principal\nFlujo para enviar un correo por gmail, un mensaje por whatsapp y registro del pedido a un google sheet\n",
+        "height": 864,
+        "width": 1568
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -256,
+        192
+      ],
+      "typeVersion": 1,
+      "id": "078b7354-aa4d-4fb6-a6a9-22c996a3922c",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  success: true,\n  message: 'Cambio de estado procesado exitosamente',\n  order_id: $node[\"🔄 Transformar Datos1\"].json.id,\n  order_number: $node[\"🔄 Transformar Datos1\"].json.order_number,\n  old_status: $node[\"🔄 Transformar Datos1\"].json.old_status,\n  new_status: $node[\"🔄 Transformar Datos1\"].json.new_status,\n  notifications: {\n    sheets: 'actualizado',\n    whatsapp: 'enviado',\n    email: $node[\"🔄 Transformar Datos1\"].json.new_status === 'Completado' ? 'enviado' : 'no enviado'\n  },\n  timestamp: new Date().toISOString()\n} }}",
+        "options": {}
+      },
+      "id": "8eb8a71c-48ce-421b-9782-9fcba3c1e8c5",
+      "name": "✅ Responder Éxito1",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1360,
+        1584
+      ]
+    },
+    {
+      "parameters": {
+        "from": "whatsapp:+14155238886",
+        "to": "=whatsapp:{{ $node[\"🔄 Transformar Datos1\"].json.customer_phone_normalized }}",
+        "message": "={{ $node[\"🔄 Transformar Datos1\"].json.status_emoji }} ¡Hola {{ $node[\"🔄 Transformar Datos1\"].json.customer_first_name }}!\n━━━━━━━━━━━━━━━━━━━━━\n📦 *ACTUALIZACIÓN DE PEDIDO*\n━━━━━━━━━━━━━━━━━━━━━\n*Pedido #{{ $node[\"🔄 Transformar Datos1\"].json.order_number }}*\n{{ $node[\"🔄 Transformar Datos1\"].json.status_message }}\n{{ $node[\"🔄 Transformar Datos1\"].json.new_status === 'Completado' ? '🎉 *¡Tu pedido está en camino!*\\n\\nNuestro repartidor saldrá pronto con tu pedido.\\n\\n🛒 *PRODUCTOS (' + $node[\"🔄 Transformar Datos1\"].json.total_items + ' items):*\\n\\n' + $node[\"🔄 Transformar Datos1\"].json.product_list_whatsapp + '\\n\\n━━━━━━━━━━━━━━━━━━━━━\\n💰 *TOTAL: ' + $node[\"🔄 Transformar Datos1\"].json.formatted_total + '*\\n━━━━━━━━━━━━━━━━━━━━━\\n\\n📍 *DIRECCIÓN DE ENTREGA:*\\n' + $node[\"🔄 Transformar Datos1\"].json.full_address : $node[\"🔄 Transformar Datos1\"].json.new_status === 'Cancelado' ? '❌ *Pedido Cancelado*\\n\\nLamentamos informarte que tu pedido ha sido cancelado.\\n\\nSi tienes alguna duda, por favor contáctanos.' : '⏳ *Pedido en Proceso*\\n\\nTu pedido está siendo procesado.\\nTe notificaremos cuando haya cambios.' }}\n\n━━━━━━━━━━━━━━━━━━━━━\n*Estado actual:* {{ $node[\"🔄 Transformar Datos1\"].json.new_status }}\n*Actualizado:* {{ $node[\"🔄 Transformar Datos1\"].json.status_change_date }}\n¡Gracias por tu preferencia! 💚",
+        "options": {}
+      },
+      "id": "7d3dd476-e6cd-4669-ab4a-bbdf6c8cf9d7",
+      "name": "📱 WhatsApp - Cliente1",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        720,
+        1488
+      ],
+      "credentials": {
+        "twilioApi": {
+          "id": "YN6eOXUESxziW3id",
+          "name": "Twilio account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const order = $input.item.json;\n\n// Generar lista de productos para WhatsApp\nlet productListWhatsApp = '';\nif (order.items && Array.isArray(order.items)) {\n  productListWhatsApp = order.items.map((item, index) => {\n    const subtotal = (parseFloat(item.price || item.unit_price || 0) * parseInt(item.quantity || 0)).toFixed(2);\n    return `  ${index + 1}. ${item.name || item.product_name} x${item.quantity}\\n     S/ ${subtotal}`;\n  }).join('\\n\\n');\n}\n\n// Generar lista de productos para HTML (email)\nlet productListHTML = '';\nif (order.items && Array.isArray(order.items)) {\n  productListHTML = order.items.map((item, index) => {\n    const unitPrice = parseFloat(item.price || item.unit_price || 0);\n    const quantity = parseInt(item.quantity || 0);\n    const subtotal = (unitPrice * quantity).toFixed(2);\n    return `\n    <tr>\n      <td style=\"padding: 10px; border-bottom: 1px solid #e5e7eb;\">${index + 1}</td>\n      <td style=\"padding: 10px; border-bottom: 1px solid #e5e7eb; font-weight: 500;\">${item.name || item.product_name}</td>\n      <td style=\"padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: center;\">${quantity}</td>\n      <td style=\"padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right;\">S/ ${unitPrice.toFixed(2)}</td>\n      <td style=\"padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: 600; color: #059669;\">S/ ${subtotal}</td>\n    </tr>`;\n  }).join('');\n}\n\n// Dirección\nlet fullAddress = order.shipping_address || 'Dirección no especificada';\nif (typeof order.shipping_address === 'object' && order.shipping_address !== null) {\n  const addr = order.shipping_address;\n  const parts = [addr.street, addr.district, addr.city, addr.postal_code].filter(p => p && p.trim() !== '');\n  fullAddress = parts.length > 0 ? parts.join(', ') : 'Dirección no especificada';\n}\n\nreturn {\n  json: {\n    ...order,\n    product_list_whatsapp: productListWhatsApp,\n    product_list_html: productListHTML,\n    full_address: fullAddress\n  }\n};"
+      },
+      "id": "1c458dc4-10df-4f1b-a3aa-391faae08408",
+      "name": "🔄 Transformar Datos1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        32,
+        1552
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body || $input.item.json;\nconst order = body.record || body;\nconst oldStatus = body.old_status;\nconst newStatus = body.new_status || order.status;\n\nif (!order || Object.keys(order).length === 0) {\n  throw new Error('❌ No se recibieron datos del pedido');\n}\n\nif (!newStatus) {\n  throw new Error('❌ No se especificó el nuevo estado');\n}\n\n// Función para normalizar teléfono\nfunction normalizarTelefono(phone) {\n  if (!phone) return '';\n  const cleaned = phone.replace(/\\s/g, '').replace(/-/g, '');\n  if (cleaned.startsWith('+51')) return cleaned;\n  if (cleaned.startsWith('51')) return '+' + cleaned;\n  if (cleaned.startsWith('9')) return '+51' + cleaned;\n  return phone;\n}\n\n// Normalizar datos\nconst phoneNormalized = normalizarTelefono(order.customer_phone);\nconst orderNumber = order.id ? order.id.substring(0, 8).toUpperCase() : 'ORD-' + Date.now().toString().substring(7);\nconst formattedTotal = `S/ ${parseFloat(order.total_amount).toFixed(2)}`;\nconst firstName = order.customer_name.split(' ')[0];\n\n// Calcular total de items\nlet totalItems = 0;\nif (order.items && Array.isArray(order.items)) {\n  totalItems = order.items.reduce((sum, item) => sum + (parseInt(item.quantity) || 0), 0);\n}\n\n// Formatear fecha\nconst statusChangeDate = new Date().toLocaleString('es-PE', {\n  day: '2-digit',\n  month: '2-digit',\n  year: 'numeric',\n  hour: '2-digit',\n  minute: '2-digit'\n});\n\n// Mensajes personalizados según el estado\nlet statusMessage = '';\nlet statusEmoji = '';\nlet statusColor = '';\n\nif (newStatus === 'Completado') {\n  statusMessage = '¡Tu pedido ha sido completado y está en camino!';\n  statusEmoji = '✅';\n  statusColor = '#059669';\n} else if (newStatus === 'Cancelado') {\n  statusMessage = 'Tu pedido ha sido cancelado.';\n  statusEmoji = '❌';\n  statusColor = '#ef4444';\n} else if (newStatus === 'Pendiente') {\n  statusMessage = 'Tu pedido está siendo procesado.';\n  statusEmoji = '⏳';\n  statusColor = '#f59e0b';\n} else {\n  statusMessage = `El estado de tu pedido cambió a: ${newStatus}`;\n  statusEmoji = '🔔';\n  statusColor = '#6b7280';\n}\n\nreturn {\n  json: {\n    ...order,\n    old_status: oldStatus,\n    new_status: newStatus,\n    customer_phone_normalized: phoneNormalized,\n    order_number: orderNumber,\n    formatted_total: formattedTotal,\n    customer_first_name: firstName,\n    total_items: totalItems,\n    status_change_date: statusChangeDate,\n    status_message: statusMessage,\n    status_emoji: statusEmoji,\n    status_color: statusColor\n  }\n};"
+      },
+      "id": "99db7616-f242-41f3-b4b0-0f2499b2f385",
+      "name": "✅ Validar y Normalizar1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -192,
+        1552
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Flujo de Cambio de Estado\nEste flujo se activa cuando cambia el estado de una orden.\n\n",
+        "height": 864,
+        "width": 2128,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -544,
+        1168
+      ],
+      "typeVersion": 1,
+      "id": "34a4e95e-0a8b-4f28-bffb-fbe51e78218c",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {},
+      "id": "b486e588-a608-46e5-bb44-dc8fbd2b42f8",
+      "name": "🔗 Combinar Final",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1152,
+        1584
+      ]
+    },
+    {
+      "parameters": {
+        "from": "whatsapp:+14155238886",
+        "to": "=whatsapp:{{ $node[\"🔄 Transformar Datos1\"].json.customer_phone_normalized }}",
+        "message": "={{ $node[\"🔄 Transformar Datos1\"].json.status_emoji }} ¡Hola {{ $node[\"🔄 Transformar Datos1\"].json.customer_first_name }}!\n\n━━━━━━━━━━━━━━━━━━━━━\n📦 *ACTUALIZACIÓN DE PEDIDO*\n━━━━━━━━━━━━━━━━━━━━━\n\n*Pedido #{{ $node[\"🔄 Transformar Datos1\"].json.order_number }}*\n\n{{ $node[\"🔄 Transformar Datos1\"].json.status_message }}\n\n{{ $node[\"🔄 Transformar Datos1\"].json.new_status === 'Cancelado' ? '❌ Lamentamos que tu pedido haya sido cancelado.\\n\\nSi tienes alguna consulta, por favor contáctanos.' : '⏳ Tu pedido está siendo procesado.\\nTe notificaremos cuando haya novedades.' }}\n\n━━━━━━━━━━━━━━━━━━━━━\n*Estado actual:* {{ $node[\"🔄 Transformar Datos1\"].json.new_status }}\n*Actualizado:* {{ $node[\"🔄 Transformar Datos1\"].json.status_change_date }}\n\n¡Gracias por tu preferencia! 💚",
+        "options": {}
+      },
+      "id": "fbc505e3-c597-4e06-844c-fdbb1d7f4fdf",
+      "name": "📱 WhatsApp - Cliente (Otros)",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        720,
+        1808
+      ],
+      "credentials": {
+        "twilioApi": {
+          "id": "YN6eOXUESxziW3id",
+          "name": "Twilio account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {},
+      "id": "b3fd465e-2134-4879-99fa-d3c8f09f5df0",
+      "name": "🔗 Combinar (Completado)",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        944,
+        1376
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "cjondec@unitru.edu.pe",
+        "subject": "=✅ Pedido #{{ $node[\"🔄 Transformar Datos1\"].json.order_number }} Completado",
+        "message": "=<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UTF-8\">\n  <style>\n    body { font-family: Arial, sans-serif; background-color: #f5f5f5; margin: 0; padding: 20px; }\n    .container { max-width: 600px; margin: 0 auto; background-color: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }\n    .header { background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; padding: 30px; text-align: center; }\n    .header h1 { margin: 0; font-size: 24px; }\n    .content { padding: 30px; }\n    .success-box { background-color: #d1fae5; border-left: 4px solid #059669; padding: 15px; margin-bottom: 20px; border-radius: 4px; }\n    .info-section { margin-bottom: 25px; }\n    .info-section h3 { color: #374151; margin: 0 0 10px 0; font-size: 16px; }\n    .info-row { margin: 8px 0; color: #4b5563; }\n    .info-row strong { color: #1f2937; }\n    table { width: 100%; border-collapse: collapse; margin: 15px 0; }\n    th { background-color: #f9fafb; padding: 10px; text-align: left; font-size: 12px; color: #6b7280; text-transform: uppercase; border-bottom: 2px solid #e5e7eb; }\n    td { padding: 10px; color: #374151; }\n    .total-row { background-color: #f9fafb; font-weight: bold; }\n    .total-row td { font-size: 18px; color: #059669; }\n    .footer { background-color: #f9fafb; padding: 20px; text-align: center; color: #6b7280; font-size: 12px; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>✅ PEDIDO COMPLETADO</h1>\n      <p style=\"margin: 10px 0 0 0; font-size: 14px; opacity: 0.9;\">El pedido ha sido marcado como completado</p>\n    </div>\n    <div class=\"content\">\n      <div class=\"success-box\">\n        <div style=\"font-size: 18px; font-weight: bold; color: #065f46; margin-bottom: 5px;\">Pedido #{{ $node[\"🔄 Transformar Datos1\"].json.order_number }}</div>\n        <div style=\"font-size: 24px; font-weight: bold; color: #059669;\">{{ $node[\"🔄 Transformar Datos1\"].json.formatted_total }}</div>\n        <div style=\"font-size: 12px; color: #6b7280; margin-top: 5px;\">Completado el {{ $node[\"🔄 Transformar Datos1\"].json.status_change_date }}</div>\n      </div>\n      <div class=\"info-section\">\n        <h3>👤 INFORMACIÓN DEL CLIENTE</h3>\n        <div class=\"info-row\"><strong>Nombre:</strong> {{ $node[\"🔄 Transformar Datos1\"].json.customer_name }}</div>\n        <div class=\"info-row\"><strong>Teléfono:</strong> {{ $node[\"🔄 Transformar Datos1\"].json.customer_phone_normalized }}</div>\n        <div class=\"info-row\"><strong>Email:</strong> {{ $node[\"🔄 Transformar Datos1\"].json.customer_email }}</div>\n      </div>\n      <div class=\"info-section\">\n        <h3>🛒 PRODUCTOS ({{ $node[\"🔄 Transformar Datos1\"].json.total_items }} items)</h3>\n        <table>\n          <thead>\n            <tr>\n              <th>#</th>\n              <th>Producto</th>\n              <th style=\"text-align: center;\">Cant.</th>\n              <th style=\"text-align: right;\">Precio Unit.</th>\n              <th style=\"text-align: right;\">Subtotal</th>\n            </tr>\n          </thead>\n          <tbody>\n            {{ $node[\"🔄 Transformar Datos1\"].json.product_list_html }}\n          </tbody>\n          <tfoot>\n            <tr class=\"total-row\">\n              <td colspan=\"4\" style=\"text-align: right; padding-right: 15px;\">TOTAL:</td>\n              <td style=\"text-align: right;\">{{ $node[\"🔄 Transformar Datos1\"].json.formatted_total }}</td>\n            </tr>\n          </tfoot>\n        </table>\n      </div>\n      <div class=\"info-section\">\n        <h3>📍 DIRECCIÓN DE ENTREGA</h3>\n        <div class=\"info-row\">{{ $node[\"🔄 Transformar Datos1\"].json.full_address }}</div>\n      </div>\n      <div class=\"info-section\">\n        <h3>📝 RESUMEN</h3>\n        <div class=\"info-row\"><strong>Estado anterior:</strong> {{ $node[\"🔄 Transformar Datos1\"].json.old_status || 'N/A' }}</div>\n        <div class=\"info-row\"><strong>Estado actual:</strong> <span style=\"color: #059669; font-weight: bold;\">✅ Completado</span></div>\n        <div class=\"info-row\"><strong>Cambio realizado:</strong> {{ $node[\"🔄 Transformar Datos1\"].json.status_change_date }}</div>\n      </div>\n    </div>\n    <div class=\"footer\">\n      <p style=\"margin: 0;\">Sistema automático de notificaciones - n8n</p>\n      <p style=\"margin: 5px 0 0 0;\">Pedido ID: {{ $node[\"🔄 Transformar Datos1\"].json.id }}</p>\n    </div>\n  </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "id": "9c1ae56d-1d15-43b8-9a39-779ae1790c45",
+      "name": "📧 Email - Vendedor (Completado)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        720,
+        1248
+      ],
+      "webhookId": "c4439e1d-bc92-4f15-a191-03de08f9b53b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "6tyyfx3uu6n5WTvD",
+          "name": "Gmail account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "completado-check",
+              "leftValue": "={{ $node[\"🔄 Transformar Datos1\"].json.new_status }}",
+              "rightValue": "Completado",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "3e091bb4-e6dd-4169-b3ad-be18b982e552",
+      "name": "✅ ¿Estado = Completado?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        496,
+        1552
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1zGOrm27WhjeScrbvNDJTsixr2vHN8w4zCuk0Fr4Pha8",
+          "mode": "list",
+          "cachedResultName": "Ecommerce",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1zGOrm27WhjeScrbvNDJTsixr2vHN8w4zCuk0Fr4Pha8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1zGOrm27WhjeScrbvNDJTsixr2vHN8w4zCuk0Fr4Pha8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "={{ $node[\"🔄 Transformar Datos1\"].json.new_status }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e67374bb-0812-4e27-ba0f-3bc517b6369f",
+      "name": "📊 Actualizar Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        272,
+        1552
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "FwZ0euSqO70jr4JJ",
+          "name": "Google Sheets account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cambio-estado-pedido",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "54310cd5-a48c-49e5-8d07-e373fdeba86f",
+      "name": "🎯 Webhook - Cambio Estado",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -432,
+        1552
+      ],
+      "webhookId": "webhook-cambio-estado"
+    }
+  ],
+  "connections": {
+    "🎯 Webhook - Nuevo Pedido": {
+      "main": [
+        [
+          {
+            "node": "✅ Validar y Normalizar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✅ Validar y Normalizar": {
+      "main": [
+        [
+          {
+            "node": "🔄 Transformar Datos",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "⚠️ ¿Hay Error?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔄 Transformar Datos": {
+      "main": [
+        [
+          {
+            "node": "📧 Email - Vendedor",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "📊 Guardar en Google Sheets",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "📱 WhatsApp - Cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📱 WhatsApp - Cliente": {
+      "main": [
+        [
+          {
+            "node": "🔗 Combinar Resultados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📧 Email - Vendedor": {
+      "main": [
+        [
+          {
+            "node": "🔗 Combinar Resultados",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "🔗 Combinar Resultados": {
+      "main": [
+        [
+          {
+            "node": "✅ Responder Éxito",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⚠️ ¿Hay Error?": {
+      "main": [
+        [
+          {
+            "node": "🚨 Notificar Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🚨 Notificar Error": {
+      "main": [
+        [
+          {
+            "node": "❌ Responder Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📱 WhatsApp - Cliente1": {
+      "main": [
+        [
+          {
+            "node": "🔗 Combinar (Completado)",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "🔄 Transformar Datos1": {
+      "main": [
+        [
+          {
+            "node": "📊 Actualizar Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✅ Validar y Normalizar1": {
+      "main": [
+        [
+          {
+            "node": "🔄 Transformar Datos1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔗 Combinar Final": {
+      "main": [
+        [
+          {
+            "node": "✅ Responder Éxito1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📱 WhatsApp - Cliente (Otros)": {
+      "main": [
+        [
+          {
+            "node": "🔗 Combinar Final",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "🔗 Combinar (Completado)": {
+      "main": [
+        [
+          {
+            "node": "🔗 Combinar Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📧 Email - Vendedor (Completado)": {
+      "main": [
+        [
+          {
+            "node": "🔗 Combinar (Completado)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✅ ¿Estado = Completado?": {
+      "main": [
+        [
+          {
+            "node": "📱 WhatsApp - Cliente1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "📧 Email - Vendedor (Completado)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "📱 WhatsApp - Cliente (Otros)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📊 Actualizar Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "✅ ¿Estado = Completado?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎯 Webhook - Cambio Estado": {
+      "main": [
+        [
+          {
+            "node": "✅ Validar y Normalizar1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "7d2058f8bfb63e5672f7d17da4083711cfa04de63c26b86a1a035fae89b7b9a5"
+  }
+}

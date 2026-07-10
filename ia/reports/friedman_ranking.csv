@@ -1,0 +1,6 @@
+model,average_rank
+mlp,1.0
+gru,3.0
+cnn_lstm,3.4
+cnn_gru,3.8
+lstm,3.8

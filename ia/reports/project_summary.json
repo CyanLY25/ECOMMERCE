@@ -1,0 +1,26 @@
+{
+    "preprocessing": false,
+    "training": false,
+    "model_comparison": false,
+    "cross_validation": false,
+    "hyperparameter_tuning": false,
+    "statistical_tests": false,
+    "deployment": true,
+    "best_model": "MLP",
+    "best_model_metrics": {
+        "rmse": 6.707147560599678,
+        "mae": 5.5076751708984375,
+        "r2": -0.03934049606323242
+    },
+    "execution_time": "00:00:00",
+    "phases": [
+        {
+            "name": "Deployment",
+            "start_time": "2026-07-09T21:58:09.650618",
+            "end_time": "2026-07-09T21:58:09.659051",
+            "duration_seconds": 0.008433103561401367,
+            "success": true,
+            "error": null
+        }
+    ]
+}

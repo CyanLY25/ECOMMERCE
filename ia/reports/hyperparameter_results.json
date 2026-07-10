@@ -1,0 +1,46 @@
+{
+    "MLP": {
+        "best_parameters": {
+            "neurons": 128,
+            "dropout": 0.2,
+            "learning_rate": 0.001
+        },
+        "best_score": 1996.6656494140625
+    },
+    "LSTM": {
+        "best_parameters": {
+            "lstm_units": 32,
+            "dropout": 0.5,
+            "learning_rate": 0.001
+        },
+        "best_score": 2026.8724365234375
+    },
+    "GRU": {
+        "best_parameters": {
+            "gru_units": 128,
+            "dropout": 0.2,
+            "learning_rate": 0.0001
+        },
+        "best_score": 2026.843505859375
+    },
+    "CNN_LSTM": {
+        "best_parameters": {
+            "cnn_filters": 32,
+            "kernel_size": 3,
+            "lstm_units": 32,
+            "dropout": 0.3,
+            "learning_rate": 0.001
+        },
+        "best_score": 2026.896728515625
+    },
+    "CNN_GRU": {
+        "best_parameters": {
+            "cnn_filters": 64,
+            "kernel_size": 3,
+            "gru_units": 64,
+            "dropout": 0.3,
+            "learning_rate": 0.001
+        },
+        "best_score": 2026.853759765625
+    }
+}

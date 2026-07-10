@@ -1,0 +1,8 @@
+{
+    "model": "MLP",
+    "path": "C:\\Users\\milto\\OneDrive\\Desktop\\7 CICLO\\1 ING SOFTWARE\\WEBWO DE SANTONS\\ECOMMERCE\\ia\\models\\mlp.keras",
+    "rmse": 6.707147560599678,
+    "mae": 5.5076751708984375,
+    "mape": 208.74984741210938,
+    "r2": -0.03934049606323242
+}

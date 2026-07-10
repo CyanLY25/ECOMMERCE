@@ -1,0 +1,132 @@
+
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Reporte de Preprocesamiento de Datos</title>
+            <style>
+                body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }
+                h1, h2, h3 { color: #2c3e50; }
+                table { border-collapse: collapse; width: 100%; margin: 20px 0; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #4CAF50; color: white; }
+                tr:nth-child(even) { background-color: #f2f2f2; }
+                .success { color: green; }
+                .warning { color: orange; }
+                .error { color: red; }
+            </style>
+        </head>
+        <body>
+            <h1>Reporte de Preprocesamiento de Datos</h1>
+            <p><strong>Fecha de generación:</strong> 2026-07-07 09:55:20</p>
+            
+            <h2>1. Columnas Eliminadas</h2>
+            
+            <table>
+                <tr><th>Columna</th><th>Razón</th></tr>
+                
+                <tr><td>InvoiceDate</td><td>Ya extrajimos características temporales (Año, Mes, Día, Hora, DíaSemana, SemanaAño, Trimestre, EsFinDeSemana)</td></tr>
+                
+                <tr><td>InvoiceNo</td><td>Identificador único de transacción, no predictivo</td></tr>
+                
+                <tr><td>Description</td><td>Texto libre con alta cardinalidad, no útil para este pipeline</td></tr>
+                
+            </table>
+            
+            
+            <h2>2. Codificaciones Aplicadas</h2>
+            
+            <table>
+                <tr><th>Columna</th><th>Técnica</th></tr>
+                
+                <tr><td>StockCode</td><td>Label Encoding</td></tr>
+                
+                <tr><td>Country</td><td>Label Encoding</td></tr>
+                
+                <tr><td>CustomerID</td><td>Label Encoding</td></tr>
+                
+                <tr><td>MesNombre</td><td>Label Encoding</td></tr>
+                
+            </table>
+            
+            
+            <h2>3. Escaladores Utilizados</h2>
+            
+            <table>
+                <tr><th>Scaler</th><th>Columnas</th></tr>
+                
+                <tr><td>StandardScaler</td><td>UnitPrice</td></tr>
+                
+            </table>
+            
+            
+            <h2>4. Valores Faltantes</h2>
+            <table>
+                <tr><th>Columna</th><th>Cantidad</th></tr>
+                
+                <tr><td>InvoiceNo</td><td>0</td></tr>
+                
+                <tr><td>StockCode</td><td>0</td></tr>
+                
+                <tr><td>Description</td><td>1454</td></tr>
+                
+                <tr><td>Quantity</td><td>0</td></tr>
+                
+                <tr><td>InvoiceDate</td><td>0</td></tr>
+                
+                <tr><td>UnitPrice</td><td>0</td></tr>
+                
+                <tr><td>CustomerID</td><td>135037</td></tr>
+                
+                <tr><td>Country</td><td>0</td></tr>
+                
+            </table>
+            
+            <h2>5. Duplicados</h2>
+            <p>Duplicados eliminados: <strong>5268</strong></p>
+            
+            <h2>6. Outliers</h2>
+            
+            <table>
+                <tr><th>Columna</th><th>Cantidad</th><th>Porcentaje</th></tr>
+                
+                <tr><td>UnitPrice</td><td>34112</td><td>8.69%</td></tr>
+                
+            </table>
+            
+            
+            <h2>7. Variables Finales</h2>
+            <ul>
+                
+                <li>StockCode</li>
+                
+                <li>Quantity</li>
+                
+                <li>UnitPrice</li>
+                
+                <li>CustomerID</li>
+                
+                <li>Country</li>
+                
+                <li>Año</li>
+                
+                <li>Mes</li>
+                
+                <li>Día</li>
+                
+                <li>Hora</li>
+                
+                <li>DíaSemana</li>
+                
+                <li>SemanaAño</li>
+                
+                <li>Trimestre</li>
+                
+                <li>EsFinDeSemana</li>
+                
+                <li>MesNombre</li>
+                
+            </ul>
+        </body>
+        </html>
+        

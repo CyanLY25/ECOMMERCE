@@ -1,0 +1,1 @@
+"""Backend FastAPI para el sistema de predicción de demanda."""

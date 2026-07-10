@@ -1,0 +1,227 @@
+
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <title>Reporte de Análisis Exploratorio de Datos</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 40px; }
+                h1 { color: #2c3e50; }
+                h2 { color: #3498db; margin-top: 40px; }
+                table { border-collapse: collapse; width: 100%; margin: 20px 0; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #f2f2f2; }
+                .figure { margin: 30px 0; }
+                .figure img { max-width: 100%; height: auto; }
+            </style>
+        </head>
+        <body>
+            <h1>Reporte de Análisis Exploratorio de Datos (EDA)</h1>
+            
+            <h2>Resumen del Dataset</h2>
+            <p><strong>Número de registros:</strong> 323725</p>
+            <p><strong>Número de columnas:</strong> 19</p>
+            <p><strong>Columnas:</strong> InvoiceNo, StockCode, Description, Quantity, InvoiceDate, UnitPrice, CustomerID, Country, Año, Mes, Día, Hora, DíaSemana, SemanaAño, EsFinDeSemana, Ingresos, MesNombre, Trimestre, DateOnly</p>
+            
+            <h2>Valores Nulos</h2>
+            <table>
+                <tr><th>Columna</th><th>Valores Nulos</th><th>Porcentaje</th></tr>
+                <tr><td>InvoiceNo</td><td>0</td><td>0.00%</td></tr><tr><td>StockCode</td><td>0</td><td>0.00%</td></tr><tr><td>Description</td><td>0</td><td>0.00%</td></tr><tr><td>Quantity</td><td>0</td><td>0.00%</td></tr><tr><td>InvoiceDate</td><td>0</td><td>0.00%</td></tr><tr><td>UnitPrice</td><td>0</td><td>0.00%</td></tr><tr><td>CustomerID</td><td>0</td><td>0.00%</td></tr><tr><td>Country</td><td>0</td><td>0.00%</td></tr><tr><td>Año</td><td>0</td><td>0.00%</td></tr><tr><td>Mes</td><td>0</td><td>0.00%</td></tr><tr><td>Día</td><td>0</td><td>0.00%</td></tr><tr><td>Hora</td><td>0</td><td>0.00%</td></tr><tr><td>DíaSemana</td><td>0</td><td>0.00%</td></tr><tr><td>SemanaAño</td><td>0</td><td>0.00%</td></tr><tr><td>EsFinDeSemana</td><td>0</td><td>0.00%</td></tr><tr><td>Ingresos</td><td>0</td><td>0.00%</td></tr><tr><td>MesNombre</td><td>0</td><td>0.00%</td></tr><tr><td>Trimestre</td><td>0</td><td>0.00%</td></tr><tr><td>DateOnly</td><td>0</td><td>0.00%</td></tr>
+            </table>
+            
+            <h2>Estadísticas Descriptivas</h2>
+            <table border="1" class="dataframe table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Variable</th>
+      <th>Media</th>
+      <th>Mediana</th>
+      <th>Moda</th>
+      <th>Varianza</th>
+      <th>DesviaciónEstándar</th>
+      <th>Mínimo</th>
+      <th>Máximo</th>
+      <th>Percentil25</th>
+      <th>Percentil50</th>
+      <th>Percentil75</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Quantity</td>
+      <td>7.272453</td>
+      <td>5.00</td>
+      <td>1</td>
+      <td>4.353906e+01</td>
+      <td>6.598414</td>
+      <td>1.000</td>
+      <td>27.0</td>
+      <td>2.00</td>
+      <td>5.00</td>
+      <td>12.00</td>
+    </tr>
+    <tr>
+      <td>UnitPrice</td>
+      <td>2.132483</td>
+      <td>1.65</td>
+      <td>1.25</td>
+      <td>2.255513e+00</td>
+      <td>1.501836</td>
+      <td>0.001</td>
+      <td>7.5</td>
+      <td>1.25</td>
+      <td>1.65</td>
+      <td>2.95</td>
+    </tr>
+    <tr>
+      <td>CustomerID</td>
+      <td>15327.478069</td>
+      <td>15249.00</td>
+      <td>17841</td>
+      <td>2.925013e+06</td>
+      <td>1710.266868</td>
+      <td>12347.000</td>
+      <td>18287.0</td>
+      <td>13995.00</td>
+      <td>15249.00</td>
+      <td>16824.00</td>
+    </tr>
+    <tr>
+      <td>Año</td>
+      <td>2010.935507</td>
+      <td>2011.00</td>
+      <td>2011</td>
+      <td>6.033385e-02</td>
+      <td>0.245629</td>
+      <td>2010.000</td>
+      <td>2011.0</td>
+      <td>2011.00</td>
+      <td>2011.00</td>
+      <td>2011.00</td>
+    </tr>
+    <tr>
+      <td>Mes</td>
+      <td>7.652495</td>
+      <td>9.00</td>
+      <td>11</td>
+      <td>1.160641e+01</td>
+      <td>3.406818</td>
+      <td>1.000</td>
+      <td>12.0</td>
+      <td>5.00</td>
+      <td>9.00</td>
+      <td>11.00</td>
+    </tr>
+    <tr>
+      <td>Día</td>
+      <td>15.059158</td>
+      <td>15.00</td>
+      <td>6</td>
+      <td>7.505887e+01</td>
+      <td>8.663652</td>
+      <td>1.000</td>
+      <td>31.0</td>
+      <td>7.00</td>
+      <td>15.00</td>
+      <td>22.00</td>
+    </tr>
+    <tr>
+      <td>Hora</td>
+      <td>12.781855</td>
+      <td>13.00</td>
+      <td>12</td>
+      <td>5.061305e+00</td>
+      <td>2.249734</td>
+      <td>6.000</td>
+      <td>20.0</td>
+      <td>11.00</td>
+      <td>13.00</td>
+      <td>14.00</td>
+    </tr>
+    <tr>
+      <td>DíaSemana</td>
+      <td>2.639558</td>
+      <td>3.00</td>
+      <td>3</td>
+      <td>3.805137e+00</td>
+      <td>1.950676</td>
+      <td>0.000</td>
+      <td>6.0</td>
+      <td>1.00</td>
+      <td>3.00</td>
+      <td>4.00</td>
+    </tr>
+    <tr>
+      <td>SemanaAño</td>
+      <td>31.137799</td>
+      <td>35.00</td>
+      <td>48</td>
+      <td>2.165521e+02</td>
+      <td>14.715710</td>
+      <td>1.000</td>
+      <td>51.0</td>
+      <td>19.00</td>
+      <td>35.00</td>
+      <td>44.00</td>
+    </tr>
+    <tr>
+      <td>EsFinDeSemana</td>
+      <td>0.165366</td>
+      <td>0.00</td>
+      <td>0</td>
+      <td>1.380203e-01</td>
+      <td>0.371511</td>
+      <td>0.000</td>
+      <td>1.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <td>Ingresos</td>
+      <td>11.315848</td>
+      <td>9.96</td>
+      <td>15.0</td>
+      <td>7.720859e+01</td>
+      <td>8.786842</td>
+      <td>0.001</td>
+      <td>42.0</td>
+      <td>3.75</td>
+      <td>9.96</td>
+      <td>16.52</td>
+    </tr>
+    <tr>
+      <td>Trimestre</td>
+      <td>2.870180</td>
+      <td>3.00</td>
+      <td>4</td>
+      <td>1.253686e+00</td>
+      <td>1.119681</td>
+      <td>1.000</td>
+      <td>4.0</td>
+      <td>2.00</td>
+      <td>3.00</td>
+      <td>4.00</td>
+    </tr>
+  </tbody>
+</table>
+            
+            <h2>Outliers</h2>
+            <table>
+                <tr><th>Columna</th><th>Cantidad de Outliers</th><th>Porcentaje</th></tr>
+                <tr><td>Quantity</td><td>25616</td><td>6.52%</td></tr><tr><td>UnitPrice</td><td>34112</td><td>8.69%</td></tr><tr><td>Ingresos</td><td>31231</td><td>7.95%</td></tr>
+            </table>
+            
+            <h2>Visualizaciones</h2>
+            <div class="figure"><h3>10_top_20_products</h3><img src="figures/10_top_20_products.png" alt="10_top_20_products"></div><div class="figure"><h3>11_country_distribution</h3><img src="figures/11_country_distribution.png" alt="11_country_distribution"></div><div class="figure"><h3>12_revenue_distribution</h3><img src="figures/12_revenue_distribution.png" alt="12_revenue_distribution"></div><div class="figure"><h3>13_time_series_sales</h3><img src="figures/13_time_series_sales.png" alt="13_time_series_sales"></div><div class="figure"><h3>1_histogram_quantity</h3><img src="figures/1_histogram_quantity.png" alt="1_histogram_quantity"></div><div class="figure"><h3>2_histogram_unitprice</h3><img src="figures/2_histogram_unitprice.png" alt="2_histogram_unitprice"></div><div class="figure"><h3>3_boxplot_quantity</h3><img src="figures/3_boxplot_quantity.png" alt="3_boxplot_quantity"></div><div class="figure"><h3>4_boxplot_unitprice</h3><img src="figures/4_boxplot_unitprice.png" alt="4_boxplot_unitprice"></div><div class="figure"><h3>5_correlation_heatmap</h3><img src="figures/5_correlation_heatmap.png" alt="5_correlation_heatmap"></div><div class="figure"><h3>7_sales_by_month</h3><img src="figures/7_sales_by_month.png" alt="7_sales_by_month"></div><div class="figure"><h3>8_sales_by_day</h3><img src="figures/8_sales_by_day.png" alt="8_sales_by_day"></div><div class="figure"><h3>9_top_products</h3><img src="figures/9_top_products.png" alt="9_top_products"></div><div class="figure"><h3>outlier_comparison_Quantity</h3><img src="figures/outlier_comparison_Quantity.png" alt="outlier_comparison_Quantity"></div>
+            
+            <h2>Conclusiones Automáticas</h2>
+            <ul>
+                <li>El dataset contiene 323725 registros válidos después de la limpieza.</li>
+                <li>Se detectaron outliers en las columnas: Quantity, UnitPrice, Ingresos.</li>
+                <li>Las variables numéricas principales son: Quantity, UnitPrice, CustomerID, Año, Mes, Día, Hora, DíaSemana, SemanaAño, EsFinDeSemana, Ingresos, Trimestre.</li>
+            </ul>
+            
+        </body>
+        </html>
+        

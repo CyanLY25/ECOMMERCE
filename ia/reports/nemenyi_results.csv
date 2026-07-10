@@ -1,0 +1,11 @@
+model_a,model_b,rank_a,rank_b,rank_diff,critical_diff,significant
+cnn_gru,cnn_lstm,3.8,3.4,0.3999999999999999,2.728,False
+cnn_gru,gru,3.8,3.0,0.7999999999999998,2.728,False
+cnn_gru,lstm,3.8,3.8,0.0,2.728,False
+cnn_gru,mlp,3.8,1.0,2.8,2.728,True
+cnn_lstm,gru,3.4,3.0,0.3999999999999999,2.728,False
+cnn_lstm,lstm,3.4,3.8,0.3999999999999999,2.728,False
+cnn_lstm,mlp,3.4,1.0,2.4,2.728,False
+gru,lstm,3.0,3.8,0.7999999999999998,2.728,False
+gru,mlp,3.0,1.0,2.0,2.728,False
+lstm,mlp,3.8,1.0,2.8,2.728,True

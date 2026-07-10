@@ -1,0 +1,11 @@
+model_a,model_b,statistic,p_value,cohens_d,cohens_interpretation,cliffs_delta,cliffs_interpretation,mean_a,mean_b,mean_diff,p_value_bonferroni,significant,interpretation
+cnn_gru,cnn_lstm,7.0,1.0,0.018163681303946296,Despreciable,0.04,Despreciable,97.24241570176596,97.2423971719346,1.852983135535169e-05,1.0,False,No hay diferencias estadísticamente significativas entre cnn_gru y cnn_lstm
+cnn_gru,gru,3.0,0.3125,0.48131939818747965,Pequeño,0.04,Despreciable,97.24241570176596,97.23930172998202,0.0031139717839479887,1.0,False,No hay diferencias estadísticamente significativas entre cnn_gru y gru
+cnn_gru,lstm,6.0,0.8125,0.010253183220476645,Despreciable,0.04,Despreciable,97.24241570176596,97.24240986916723,5.832598723998217e-06,1.0,False,No hay diferencias estadísticamente significativas entre cnn_gru y lstm
+cnn_gru,mlp,0.0,0.0625,2.1070082497637945,Grande,0.2,Pequeño,97.24241570176596,96.35037295480146,0.8920427469645077,0.625,False,No hay diferencias estadísticamente significativas entre cnn_gru y mlp
+cnn_lstm,gru,5.0,0.625,0.4781100454095405,Pequeño,0.04,Despreciable,97.2423971719346,97.23930172998202,0.0030954419525926367,1.0,False,No hay diferencias estadísticamente significativas entre cnn_lstm y gru
+cnn_lstm,lstm,6.0,0.8125,-0.012437228128991895,Despreciable,-0.04,Despreciable,97.2423971719346,97.24240986916723,-1.2697232631353472e-05,1.0,False,No hay diferencias estadísticamente significativas entre cnn_lstm y lstm
+cnn_lstm,mlp,0.0,0.0625,2.1043327969032886,Grande,0.2,Pequeño,97.2423971719346,96.35037295480146,0.8920242171331523,0.625,False,No hay diferencias estadísticamente significativas entre cnn_lstm y mlp
+gru,lstm,4.0,0.4375,-0.44555813272497613,Pequeño,-0.12,Despreciable,97.23930172998202,97.24240986916723,-0.0031081391852239904,1.0,False,No hay diferencias estadísticamente significativas entre gru y lstm
+gru,mlp,0.0,0.0625,2.1156594822075965,Grande,0.2,Pequeño,97.23930172998202,96.35037295480146,0.8889287751805597,0.625,False,No hay diferencias estadísticamente significativas entre gru y mlp
+lstm,mlp,0.0,0.0625,2.105402802966737,Grande,0.2,Pequeño,97.24240986916723,96.35037295480146,0.8920369143657837,0.625,False,No hay diferencias estadísticamente significativas entre lstm y mlp

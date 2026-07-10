@@ -1,0 +1,7 @@
+RANKING DE MODELOS (por RMSE)
+========================================
+1. MLP
+2. GRU
+3. CNN-GRU
+4. LSTM
+5. CNN-LSTM
