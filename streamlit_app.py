@@ -1,6 +1,5 @@
 import streamlit as st
 import requests
-from datetime import datetime
 
 # Configuration
 API_URL = "http://127.0.0.1:8000"
@@ -43,8 +42,10 @@ try:
         # Metrics section
         if 'metrics' in model_info:
             metrics = model_info['metrics']
-            for metric in ['rmse', 'mae', 'mape', 'r2']:
-                st.sidebar.write(f"{metric.upper()}: {metrics.get(metric, 'N/A')}")
+            st.sidebar.metric("RMSE", f"{metrics.get('rmse', 0):.4f}")
+            st.sidebar.metric("MAE", f"{metrics.get('mae', 0):.4f}")
+            st.sidebar.metric("MAPE", f"{metrics.get('mape', 0):.2f}")
+            st.sidebar.metric("R²", f"{metrics.get('r2', 0):.4f}")
         
     except Exception as e:
         st.sidebar.warning("No se pudo obtener detalles completos del modelo")
@@ -67,10 +68,52 @@ with st.form("prediction_form"):
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        stock_code = st.text_input("StockCode", value="1001")
+        stock_code = st.text_input("StockCode", value="85123A")
         unit_price = st.number_input("UnitPrice", min_value=0.0, step=0.01, value=19.99)
-        customer_id = st.text_input("CustomerID", value="12345")
-        country = st.text_input("Country", value="1")
+        customer_id = st.text_input("CustomerID", value="17850")
+        country = st.selectbox(
+            "Country",
+            [
+                "Australia",
+                "Austria",
+                "Bahrain",
+                "Belgium",
+                "Brazil",
+                "Canada",
+                "Channel Islands",
+                "Cyprus",
+                "Czech Republic",
+                "Denmark",
+                "EIRE",
+                "European Community",
+                "Finland",
+                "France",
+                "Germany",
+                "Greece",
+                "Iceland",
+                "Israel",
+                "Italy",
+                "Japan",
+                "Lebanon",
+                "Lithuania",
+                "Malta",
+                "Netherlands",
+                "Norway",
+                "Poland",
+                "Portugal",
+                "RSA",
+                "Saudi Arabia",
+                "Singapore",
+                "Spain",
+                "Sweden",
+                "Switzerland",
+                "USA",
+                "United Arab Emirates",
+                "United Kingdom",
+                "Unspecified"
+            ],
+            index=36   # United Kingdom por defecto
+        )
     
     with col2:
         year = st.selectbox("Año", options=[2010, 2011], index=1)
@@ -124,7 +167,7 @@ if submit_button:
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                st.metric("Predicción", f"{prediction_data.get('prediction', 0):.2f}")
+                st.metric("Demanda estimada", f"{prediction_data.get('prediction',0):.2f} unidades")
             
             with col2:
                 st.metric("Modelo", prediction_data.get('model', 'N/A'))
@@ -133,7 +176,10 @@ if submit_button:
                 st.metric("Tiempo", f"{prediction_data.get('processing_time_ms', 0):.2f} ms")
             
             st.write(f"Timestamp: {prediction_data.get('timestamp')}")
-            st.write(f"Status: {prediction_data.get('status')}")
+            if prediction_data.get("status") == "success":
+                st.success("Predicción realizada correctamente")
+            else:
+                st.error(prediction_data.get("status"))
             
         except requests.exceptions.ConnectionError:
             st.error("❌ No se puede conectar al backend para realizar la predicción")
