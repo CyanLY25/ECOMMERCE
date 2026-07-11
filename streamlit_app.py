@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 
 # Configuration
-API_URL = "http://127.0.0.1:8000"
+API_URL = "https://ecommerce-9u1d.onrender.com"
 
 # App title
 st.set_page_config(page_title="Predicción de Demanda E-Commerce", layout="wide")
@@ -51,7 +51,7 @@ try:
         st.sidebar.warning("No se pudo obtener detalles completos del modelo")
         
 except requests.exceptions.ConnectionError:
-    st.error("❌ No se puede conectar al backend FastAPI. Asegúrese de que esté ejecutándose en http://127.0.0.1:8000")
+    st.error("❌ No se puede conectar al backend FastAPI. Asegúrese de que esté ejecutándose en https://ecommerce-9u1d.onrender.com")
     st.stop()
 except requests.exceptions.Timeout:
     st.error("⏱️ Timeout al conectar con el backend")
