@@ -180,6 +180,9 @@ if submit_button:
                 st.success("Predicción realizada correctamente")
             else:
                 st.error(prediction_data.get("status"))
+
+            if prediction_data.get("interpretation"):
+                st.info(f"🧠 **Interpretación:** {prediction_data['interpretation']}")
             
         except requests.exceptions.ConnectionError:
             st.error("❌ No se puede conectar al backend para realizar la predicción")
@@ -193,3 +196,128 @@ if submit_button:
             st.error(f"❌ Error en la API: {error_detail}")
         except Exception as e:
             st.error(f"❌ Error inesperado: {str(e)}")
+
+# ============================================================
+# Resultados y Validación del Modelo (salidas en pantalla)
+# ============================================================
+# Muestra en el dashboard, con tablas + figuras + interpretación,
+# los mismos resultados que contienen los reportes descargables
+# (PDF/Word/Excel), tal como exige la consigna para "las salidas
+# a pantalla".
+st.divider()
+st.header("📈 Resultados y Validación del Modelo")
+st.caption(
+    "Estas tablas y figuras provienen del mismo pipeline de entrenamiento que generó "
+    "los reportes PDF/Word/Excel. Se muestran aquí en vivo, con su interpretación."
+)
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def get_reports_summary():
+    resp = requests.get(f"{API_URL}/api/reports/summary", timeout=15)
+    resp.raise_for_status()
+    return resp.json()
+
+
+try:
+    summary = get_reports_summary()
+
+    tab_eda, tab_models, tab_cv, tab_stats = st.tabs([
+        "🔎 EDA", "🧮 Comparación de Modelos", "🔁 Validación Cruzada", "📐 Pruebas Estadísticas"
+    ])
+
+    with tab_eda:
+        st.subheader("Estadísticos Descriptivos")
+        eda = summary.get("eda", {})
+        if eda.get("table"):
+            st.dataframe(eda["table"], use_container_width=True)
+        else:
+            st.warning("No hay tabla de EDA disponible en el backend.")
+        if eda.get("interpretation"):
+            st.info(f"🧠 **Interpretación:** {eda['interpretation']}")
+
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.image(f"{API_URL}/api/reports/figure/correlation_heatmap", caption="Mapa de calor de correlaciones", use_container_width=True)
+        with col_b:
+            st.image(f"{API_URL}/api/reports/figure/time_series_sales", caption="Serie temporal de ventas", use_container_width=True)
+
+    with tab_models:
+        st.subheader("Comparación entre los 5 modelos entrenados (MLP, LSTM, GRU, CNN-LSTM, CNN-GRU)")
+        cmp = summary.get("model_comparison", {})
+        if cmp.get("table"):
+            st.dataframe(cmp["table"], use_container_width=True)
+        else:
+            st.warning("No hay tabla de comparación de modelos disponible en el backend.")
+        if cmp.get("interpretation"):
+            st.warning(f"🧠 **Interpretación:** {cmp['interpretation']}")
+
+    with tab_cv:
+        st.subheader(f"Validación Cruzada")
+        cv = summary.get("cross_validation", {})
+        if cv.get("table"):
+            st.dataframe(cv["table"], use_container_width=True)
+        else:
+            st.warning("No hay tabla de validación cruzada disponible en el backend.")
+        if cv.get("interpretation"):
+            st.info(f"🧠 **Interpretación:** {cv['interpretation']}")
+        st.image(f"{API_URL}/api/reports/figure/cross_validation_boxplot", caption="Distribución del error por modelo (folds)", use_container_width=True)
+
+    with tab_stats:
+        st.subheader("Ranking y Pruebas Estadísticas Robustas (Friedman / Wilcoxon / Nemenyi)")
+        stats = summary.get("statistics", {})
+        if stats.get("ranking"):
+            st.dataframe(stats["ranking"], use_container_width=True)
+        else:
+            st.warning("No hay tabla de ranking disponible en el backend.")
+        if stats.get("interpretation"):
+            st.info(f"🧠 **Interpretación:** {stats['interpretation']}")
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.image(f"{API_URL}/api/reports/figure/significance_heatmap", caption="Mapa de calor de p-valores", use_container_width=True)
+        with col_b:
+            st.image(f"{API_URL}/api/reports/figure/critical_difference", caption="Diagrama de diferencia crítica (Nemenyi)", use_container_width=True)
+
+except requests.exceptions.RequestException:
+    st.warning(
+        "⚠️ No se pudo cargar la sección de resultados en vivo (el backend aún no tiene los "
+        "endpoints /api/reports/*, o no está disponible). Los reportes PDF/Word/Excel siguen "
+        "disponibles de forma independiente."
+    )
+
+# ============================================================
+# Descarga de Reportes Finales (generados en vivo por el backend)
+# ============================================================
+st.divider()
+st.header("📥 Descargar Reportes Finales")
+st.caption(
+    "Genera y descarga, en este momento, el reporte completo (EDA, comparación de modelos, "
+    "validación cruzada, hiperparámetros y pruebas estadísticas) directamente desde el "
+    "servidor desplegado. Puede tardar unos segundos."
+)
+
+_REPORT_DOWNLOAD_OPTIONS = {
+    "pdf": {"label": "📄 Descargar PDF", "mime": "application/pdf", "filename": "reporte_final.pdf"},
+    "word": {"label": "📝 Descargar Word", "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "filename": "reporte_final.docx"},
+    "excel": {"label": "📊 Descargar Excel", "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "filename": "reporte_final.xlsx"},
+}
+
+col_pdf, col_word, col_excel = st.columns(3)
+for col, formato in zip([col_pdf, col_word, col_excel], ["pdf", "word", "excel"]):
+    opts = _REPORT_DOWNLOAD_OPTIONS[formato]
+    with col:
+        if st.button(opts["label"], key=f"gen_{formato}", use_container_width=True):
+            with st.spinner(f"Generando reporte {formato.upper()}..."):
+                try:
+                    file_response = requests.get(f"{API_URL}/api/reports/download/{formato}", timeout=60)
+                    file_response.raise_for_status()
+                    st.download_button(
+                        label=f"⬇️ Guardar {opts['filename']}",
+                        data=file_response.content,
+                        file_name=opts["filename"],
+                        mime=opts["mime"],
+                        key=f"save_{formato}",
+                        use_container_width=True,
+                    )
+                except requests.exceptions.RequestException as e:
+                    st.error(f"❌ No se pudo generar el reporte {formato.upper()}: {e}")

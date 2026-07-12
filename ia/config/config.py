@@ -128,6 +128,11 @@ class AIConfig:
     VALIDATION_DATA_PATH = DATASET_DIR / "processed" / "validation.csv"
     STATISTICS_PATH = REPORTS_DIR / "statistics.csv"
     EDA_REPORT_PATH = REPORTS_DIR / "eda_report.html"
+
+    # Rutas de los reportes finales (PDF, Word, Excel)
+    REPORT_PDF_PATH = REPORTS_DIR / "reporte_final.pdf"
+    REPORT_WORD_PATH = REPORTS_DIR / "reporte_final.docx"
+    REPORT_EXCEL_PATH = REPORTS_DIR / "reporte_final.xlsx"
     LOG_FILE_PATH = LOGS_DIR / "preprocessing.log"
     
     # Rutas para modelos entrenados

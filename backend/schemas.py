@@ -54,6 +54,11 @@ class PredictionResponse(BaseModel):
     processing_time_ms: Optional[float] = Field(None, description="Tiempo de procesamiento en milisegundos", examples=[12.5])
     timestamp: Optional[str] = Field(None, description="Fecha y hora de la predicción en formato ISO", examples=[datetime.now().isoformat()])
     status: str = Field(..., description="Estado de la solicitud", examples=["success"])
+    interpretation: Optional[str] = Field(
+        None,
+        description="Interpretación en lenguaje natural de la predicción, contextualizada contra el histórico y la confiabilidad del modelo.",
+        examples=["La demanda estimada (5.2 unidades) está cerca del promedio histórico..."]
+    )
 
 
 class ErrorResponse(BaseModel):

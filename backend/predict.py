@@ -1,6 +1,7 @@
 import sys
 import time
 import numpy as np
+import pandas as pd
 from pathlib import Path
 from datetime import datetime
 
@@ -11,6 +12,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from backend.schemas import PredictionRequest, PredictionResponse
 from backend.load_model import model_loader
 from ia.utils.logger import setup_logger
+from ia.config.config import AIConfig
 
 # Orden exacto de características según el preprocesamiento de entrenamiento
 FEATURE_ORDER = [
@@ -21,6 +23,74 @@ FEATURE_ORDER = [
 
 # Configurar logger
 logger = setup_logger("prediction", PROJECT_ROOT / "ia" / "logs" / "inference.log")
+
+# Umbral de R² por debajo del cual se advierte que el modelo tiene baja confiabilidad
+LOW_CONFIDENCE_R2_THRESHOLD = 0.3
+
+
+def _load_historical_quantity_stats():
+    """
+    Carga (una sola vez, a nivel de módulo) la media/desviación histórica de
+    la variable objetivo (Quantity) desde el reporte de EDA, para poder
+    contextualizar cada predicción en pantalla. Si el archivo no existe,
+    retorna None sin romper el flujo de predicción.
+    """
+    try:
+        config = AIConfig()
+        stats_df = pd.read_csv(config.STATISTICS_PATH)
+        row = stats_df[stats_df.iloc[:, 0] == "Quantity"]
+        if row.empty:
+            return None
+        row = row.iloc[0]
+        desviacion = row.get("Desviación Estándar", row.get("DesviaciónEstándar"))
+        return {"media": float(row.get("Media")), "desviacion": float(desviacion)}
+    except Exception as e:
+        logger.warning(f"No se pudieron cargar estadísticos históricos de Quantity: {e}")
+        return None
+
+
+_HISTORICAL_QUANTITY_STATS = _load_historical_quantity_stats()
+
+
+def build_prediction_interpretation(prediction: float) -> str:
+    """
+    Construye el texto de interpretación que acompaña a cada predicción
+    mostrada en pantalla: la contextualiza contra el promedio histórico y
+    advierte sobre la confiabilidad del modelo según sus métricas (R²/MAPE),
+    tal como exige la consigna para las "salidas a pantalla".
+    """
+    partes = []
+
+    if _HISTORICAL_QUANTITY_STATS:
+        media = _HISTORICAL_QUANTITY_STATS["media"]
+        desviacion = _HISTORICAL_QUANTITY_STATS["desviacion"]
+        diferencia = prediction - media
+        if abs(diferencia) <= desviacion:
+            posicion = "cercana al promedio histórico"
+        elif diferencia > desviacion:
+            posicion = "por encima del promedio histórico"
+        else:
+            posicion = "por debajo del promedio histórico"
+        partes.append(
+            f"La demanda estimada ({prediction:.2f} unidades) es {posicion} "
+            f"({media:.2f} ± {desviacion:.2f} unidades por línea de pedido en el histórico)."
+        )
+
+    model_info = model_loader.get_model_info() or {}
+    metrics = model_info.get("metrics", {})
+    r2 = metrics.get("r2")
+    mape = metrics.get("mape")
+    if r2 is not None and r2 < LOW_CONFIDENCE_R2_THRESHOLD:
+        partes.append(
+            f"Nota de confiabilidad: el modelo {model_loader.model_name} tiene un R² de {r2:.4f} "
+            f"y un MAPE de {mape:.1f}% en el conjunto de prueba, lo que indica una capacidad "
+            "predictiva limitada. Tome este valor como una referencia aproximada, no como una "
+            "predicción de alta confianza."
+        )
+    elif r2 is not None:
+        partes.append(f"El modelo {model_loader.model_name} tiene un R² de {r2:.4f} en el conjunto de prueba.")
+
+    return " ".join(partes) if partes else "No hay información histórica disponible para interpretar esta predicción."
 
 
 def make_prediction(request: PredictionRequest) -> PredictionResponse:
@@ -85,7 +155,8 @@ def make_prediction(request: PredictionRequest) -> PredictionResponse:
             model=model_loader.model_name,
             processing_time_ms=processing_time_ms,
             timestamp=request_timestamp,
-            status="success"
+            status="success",
+            interpretation=build_prediction_interpretation(prediction)
         )
     
     except Exception as e:
