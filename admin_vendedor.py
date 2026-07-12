@@ -28,6 +28,17 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# ==================== AUTENTICACIÓN ====================
+# El dashboard completo (métricas, productos, órdenes) solo se
+# construye/renderiza después de validar las credenciales del vendedor.
+from auth_utils import require_login, logout_button
+
+require_login(app_title="🏪 Panel de Administración - E-Commerce")
+logout_button()
+
+from app_links import render_app_navigation
+render_app_navigation("vendedor")
+
 # Sin estilos CSS personalizados - usamos colores nativos de Streamlit
 
 # ==================== CONEXIÓN A SUPABASE ====================

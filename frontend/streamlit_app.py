@@ -12,6 +12,9 @@ Sistema de predicción de demanda basado en modelos de Machine Learning.
 Utiliza la API FastAPI para realizar predicciones en tiempo real.
 """)
 
+from app_links import render_app_navigation
+render_app_navigation("prediccion")
+
 # Sidebar
 st.sidebar.header("📋 Información del Sistema")
 

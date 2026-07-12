@@ -18,6 +18,9 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+from app_links import render_app_navigation
+render_app_navigation("tienda")
+
 # CSS para estandarizar el tamaño de las imágenes de productos
 st.markdown("""
     <style>
