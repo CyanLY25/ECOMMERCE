@@ -229,12 +229,12 @@ class AIConfig:
     STATISTICS_CONCLUSIONS = REPORTS_DIR / "statistical_conclusions.md"
     
     # Banderas de ejecución del pipeline maestro
-    RUN_PREPROCESSING = False
-    RUN_TRAINING = False
-    RUN_MODEL_COMPARISON = False
-    RUN_CROSS_VALIDATION = False
-    RUN_HYPERPARAMETER_TUNING = False
-    RUN_STATISTICAL_TESTS = False
+    RUN_PREPROCESSING = True
+    RUN_TRAINING = True
+    RUN_MODEL_COMPARISON = True
+    RUN_CROSS_VALIDATION = True
+    RUN_HYPERPARAMETER_TUNING = True
+    RUN_STATISTICAL_TESTS = True
     RUN_DEPLOYMENT = True
     
     # Rutas para reportes del pipeline maestro

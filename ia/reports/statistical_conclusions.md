@@ -1,6 +1,6 @@
 # Conclusiones Estadísticas
 
-Fecha: 2026-07-09 16:15:06
+Fecha: 2026-07-16 14:38:28
 
 ## 1. Resumen de Resultados
 - **Métrica**: rmse
@@ -8,7 +8,7 @@ Fecha: 2026-07-09 16:15:06
 
 ## 2. Justificación Estadística
 - Prueba de Friedman: Significativa
-- p-valor: 0.027946
+- p-valor: 0.015124
 
 ## 3. Interpretación Científica
 El modelo mlp muestra un rendimiento superior estadísticamente significativo.

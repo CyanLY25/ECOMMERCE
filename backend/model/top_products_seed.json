@@ -1,0 +1,242 @@
+[
+  {
+    "stock_code": "85099B",
+    "name": "Jumbo Bag Red Retrospot",
+    "description": "Jumbo Bag Red Retrospot — uno de los productos más vendidos de nuestro catálogo histórico (código 85099B).",
+    "price": 12.9,
+    "stock": 150,
+    "total_sold_historico": 48474
+  },
+  {
+    "stock_code": "85123A",
+    "name": "White Hanging Heart T-Light Holder",
+    "description": "White Hanging Heart T-Light Holder — uno de los productos más vendidos de nuestro catálogo histórico (código 85123A).",
+    "price": 16.9,
+    "stock": 146,
+    "total_sold_historico": 37660
+  },
+  {
+    "stock_code": "85099F",
+    "name": "Jumbo Bag Strawberry",
+    "description": "Jumbo Bag Strawberry — uno de los productos más vendidos de nuestro catálogo histórico (código 85099F).",
+    "price": 12.9,
+    "stock": 142,
+    "total_sold_historico": 17273
+  },
+  {
+    "stock_code": "85099C",
+    "name": "Jumbo Bag Baroque Black White",
+    "description": "Jumbo Bag Baroque Black White — uno de los productos más vendidos de nuestro catálogo histórico (código 85099C).",
+    "price": 13.9,
+    "stock": 138,
+    "total_sold_historico": 13922
+  },
+  {
+    "stock_code": "84970S",
+    "name": "Hanging Heart Zinc T-Light Holder",
+    "description": "Hanging Heart Zinc T-Light Holder — uno de los productos más vendidos de nuestro catálogo histórico (código 84970S).",
+    "price": 5.9,
+    "stock": 134,
+    "total_sold_historico": 8905
+  },
+  {
+    "stock_code": "16161P",
+    "name": "Wrap English Rose",
+    "description": "Wrap English Rose — uno de los productos más vendidos de nuestro catálogo histórico (código 16161P).",
+    "price": 3.9,
+    "stock": 130,
+    "total_sold_historico": 7226
+  },
+  {
+    "stock_code": "75049L",
+    "name": "Large Circular Mirror Mobile",
+    "description": "Large Circular Mirror Mobile — uno de los productos más vendidos de nuestro catálogo histórico (código 75049L).",
+    "price": 8.9,
+    "stock": 126,
+    "total_sold_historico": 7114
+  },
+  {
+    "stock_code": "82494L",
+    "name": "Wooden Frame Antique White",
+    "description": "Wooden Frame Antique White — uno de los productos más vendidos de nuestro catálogo histórico (código 82494L).",
+    "price": 16.9,
+    "stock": 122,
+    "total_sold_historico": 6749
+  },
+  {
+    "stock_code": "84970L",
+    "name": "Single Heart Zinc T-Light Holder",
+    "description": "Single Heart Zinc T-Light Holder — uno de los productos más vendidos de nuestro catálogo histórico (código 84970L).",
+    "price": 6.9,
+    "stock": 118,
+    "total_sold_historico": 6065
+  },
+  {
+    "stock_code": "16156S",
+    "name": "Wrap Pink Fairy Cakes",
+    "description": "Wrap Pink Fairy Cakes — uno de los productos más vendidos de nuestro catálogo histórico (código 16156S).",
+    "price": 3.9,
+    "stock": 114,
+    "total_sold_historico": 5800
+  },
+  {
+    "stock_code": "84997D",
+    "name": "Childrens Cutlery Polkadot Pink",
+    "description": "Childrens Cutlery Polkadot Pink — uno de los productos más vendidos de nuestro catálogo histórico (código 84997D).",
+    "price": 22.9,
+    "stock": 110,
+    "total_sold_historico": 5105
+  },
+  {
+    "stock_code": "84596B",
+    "name": "Small Dolly Mix Design Orange Bowl",
+    "description": "Small Dolly Mix Design Orange Bowl — uno de los productos más vendidos de nuestro catálogo histórico (código 84596B).",
+    "price": 3.9,
+    "stock": 106,
+    "total_sold_historico": 5078
+  },
+  {
+    "stock_code": "84029E",
+    "name": "Red Woolly Hottie White Heart.",
+    "description": "Red Woolly Hottie White Heart. — uno de los productos más vendidos de nuestro catálogo histórico (código 84029E).",
+    "price": 26.9,
+    "stock": 102,
+    "total_sold_historico": 4765
+  },
+  {
+    "stock_code": "16169E",
+    "name": "Wrap 50's Christmas",
+    "description": "Wrap 50's Christmas — uno de los productos más vendidos de nuestro catálogo histórico (código 16169E).",
+    "price": 3.9,
+    "stock": 98,
+    "total_sold_historico": 4563
+  },
+  {
+    "stock_code": "84997B",
+    "name": "Childrens Cutlery Retrospot Red",
+    "description": "Childrens Cutlery Retrospot Red — uno de los productos más vendidos de nuestro catálogo histórico (código 84997B).",
+    "price": 22.9,
+    "stock": 94,
+    "total_sold_historico": 4214
+  },
+  {
+    "stock_code": "16161U",
+    "name": "Wrap Suki And Friends",
+    "description": "Wrap Suki And Friends — uno de los productos más vendidos de nuestro catálogo histórico (código 16161U).",
+    "price": 3.9,
+    "stock": 90,
+    "total_sold_historico": 4075
+  },
+  {
+    "stock_code": "15056N",
+    "name": "Edwardian Parasol Natural",
+    "description": "Edwardian Parasol Natural — uno de los productos más vendidos de nuestro catálogo histórico (código 15056N).",
+    "price": 36.9,
+    "stock": 86,
+    "total_sold_historico": 3954
+  },
+  {
+    "stock_code": "51014A",
+    "name": "Feather Pen,Hot Pink",
+    "description": "Feather Pen,Hot Pink — uno de los productos más vendidos de nuestro catálogo histórico (código 51014A).",
+    "price": 3.9,
+    "stock": 82,
+    "total_sold_historico": 3890
+  },
+  {
+    "stock_code": "84997C",
+    "name": "Childrens Cutlery Polkadot Blue",
+    "description": "Childrens Cutlery Polkadot Blue — uno de los productos más vendidos de nuestro catálogo histórico (código 84997C).",
+    "price": 22.9,
+    "stock": 78,
+    "total_sold_historico": 3784
+  },
+  {
+    "stock_code": "84596F",
+    "name": "Small Marshmallows Pink Bowl",
+    "description": "Small Marshmallows Pink Bowl — uno de los productos más vendidos de nuestro catálogo histórico (código 84596F).",
+    "price": 3.9,
+    "stock": 74,
+    "total_sold_historico": 3748
+  },
+  {
+    "stock_code": "84029G",
+    "name": "Knitted Union Flag Hot Water Bottle",
+    "description": "Knitted Union Flag Hot Water Bottle — uno de los productos más vendidos de nuestro catálogo histórico (código 84029G).",
+    "price": 27.9,
+    "stock": 70,
+    "total_sold_historico": 3323
+  },
+  {
+    "stock_code": "47591D",
+    "name": "Pink Fairy Cake Childrens Apron",
+    "description": "Pink Fairy Cake Childrens Apron — uno de los productos más vendidos de nuestro catálogo histórico (código 47591D).",
+    "price": 11.9,
+    "stock": 66,
+    "total_sold_historico": 3211
+  },
+  {
+    "stock_code": "84536A",
+    "name": "English Rose Notebook A7 Size",
+    "description": "English Rose Notebook A7 Size — uno de los productos más vendidos de nuestro catálogo histórico (código 84536A).",
+    "price": 3.9,
+    "stock": 62,
+    "total_sold_historico": 3138
+  },
+  {
+    "stock_code": "85049A",
+    "name": "Traditional Christmas Ribbons",
+    "description": "Traditional Christmas Ribbons — uno de los productos más vendidos de nuestro catálogo histórico (código 85049A).",
+    "price": 7.9,
+    "stock": 58,
+    "total_sold_historico": 3005
+  },
+  {
+    "stock_code": "85049E",
+    "name": "Scandinavian Reds Ribbons",
+    "description": "Scandinavian Reds Ribbons — uno de los productos más vendidos de nuestro catálogo histórico (código 85049E).",
+    "price": 7.9,
+    "stock": 54,
+    "total_sold_historico": 2866
+  },
+  {
+    "stock_code": "15056BL",
+    "name": "Edwardian Parasol Black",
+    "description": "Edwardian Parasol Black — uno de los productos más vendidos de nuestro catálogo histórico (código 15056BL).",
+    "price": 33.9,
+    "stock": 50,
+    "total_sold_historico": 2844
+  },
+  {
+    "stock_code": "47503A",
+    "name": "Ass Floral Print Multi Screwdriver",
+    "description": "Ass Floral Print Multi Screwdriver — uno de los productos más vendidos de nuestro catálogo histórico (código 47503A).",
+    "price": 3.9,
+    "stock": 46,
+    "total_sold_historico": 2758
+  },
+  {
+    "stock_code": "51014C",
+    "name": "Feather Pen,Coal Black",
+    "description": "Feather Pen,Coal Black — uno de los productos más vendidos de nuestro catálogo histórico (código 51014C).",
+    "price": 3.9,
+    "stock": 42,
+    "total_sold_historico": 2711
+  },
+  {
+    "stock_code": "85199S",
+    "name": "Small Hanging Ivory/Red Wood Bird",
+    "description": "Small Hanging Ivory/Red Wood Bird — uno de los productos más vendidos de nuestro catálogo histórico (código 85199S).",
+    "price": 3.9,
+    "stock": 38,
+    "total_sold_historico": 2667
+  },
+  {
+    "stock_code": "84997A",
+    "name": "Childrens Cutlery Polkadot Green",
+    "description": "Childrens Cutlery Polkadot Green — uno de los productos más vendidos de nuestro catálogo histórico (código 84997A).",
+    "price": 23.9,
+    "stock": 34,
+    "total_sold_historico": 2573
+  }
+]

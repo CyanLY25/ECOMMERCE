@@ -261,25 +261,42 @@ def get_optimizer(config: AIConfig):
         raise ValueError(f"Optimizador no soportado: {config.OPTIMIZER}")
 
 
-def create_sequences(X: np.ndarray, y: np.ndarray, window_size: int) -> Tuple[np.ndarray, np.ndarray]:
+def create_sequences(X: np.ndarray, y: np.ndarray, window_size: int,
+                      group_col_index: int = 0) -> Tuple[np.ndarray, np.ndarray]:
     """
     Transforma los datos en secuencias temporales para modelos LSTM/GRU/CNN-LSTM.
-    
+
+    IMPORTANTE: las ventanas se generan DENTRO de cada producto (agrupando
+    por la columna de StockCode, por defecto la columna 0 de X), nunca
+    cruzando de un producto a otro. La versión anterior cortaba filas
+    consecutivas del array global (que puede mezclar productos distintos
+    sin relación temporal entre sí), lo que hacía que LSTM/GRU/CNN-LSTM/
+    CNN-GRU aprendieran de "secuencias" sin ninguna estructura temporal real.
+
     Args:
-        X: Características de entrada.
+        X: Características de entrada (train_df/val_df/test_df ya convertido
+           a numpy). La columna en `group_col_index` debe ser StockCode
+           codificado (columna 0 en el pipeline actual, ya que el DataFrame
+           conserva 'StockCode' como primera columna tras separar el target).
         y: Variable objetivo.
         window_size: Tamaño de la ventana de secuencia.
-        
+        group_col_index: Índice de la columna de X que identifica el producto.
+
     Returns:
         Tupla con (X_sequences, y_sequences).
     """
     X_seq = []
     y_seq = []
-    
-    for i in range(len(X) - window_size):
-        X_seq.append(X[i:i+window_size])
-        y_seq.append(y[i+window_size])
-    
+
+    groups = X[:, group_col_index]
+    for g in np.unique(groups):
+        idx = np.where(groups == g)[0]  # conserva el orden cronológico dentro del grupo
+        X_g = X[idx]
+        y_g = y[idx]
+        for i in range(len(X_g) - window_size):
+            X_seq.append(X_g[i:i+window_size])
+            y_seq.append(y_g[i+window_size])
+
     return np.array(X_seq), np.array(y_seq)
 
 

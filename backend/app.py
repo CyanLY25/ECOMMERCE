@@ -8,7 +8,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from backend.config import settings
-from backend.routes import router
+from backend.routes import router, store_router
 
 # Inicializar la aplicación FastAPI
 app = FastAPI(
@@ -30,6 +30,7 @@ app.add_middleware(
 
 # Incluir las rutas
 app.include_router(router)
+app.include_router(store_router)
 
 
 @app.get("/", summary="Endpoint raíz", description="Obtiene información básica de la API")

@@ -14,7 +14,7 @@
 </head>
 <body>
 <h1>Reporte de Validación Estadística</h1>
-<p>Fecha de generación: 2026-07-09 16:15:06</p>
+<p>Fecha de generación: 2026-07-16 14:38:28</p>
 <h2>Resumen Ejecutivo</h2>
 <ul>
 <li><strong>Métrica evaluada</strong>: rmse</li>
@@ -25,19 +25,19 @@
 <h2>1. Prueba de Friedman</h2>
 <h3>Resultados</h3>
 <ul>
-<li><strong>Estadístico χ²</strong>: 10.8800</li>
-<li><strong>Valor p</strong>: 0.027946</li>
+<li><strong>Estadístico χ²</strong>: 12.3200</li>
+<li><strong>Valor p</strong>: 0.015124</li>
 <li><strong>α</strong>: 0.05</li>
 </ul>
 <h3>Conclusión</h3>
-<p>Se rechaza la hipótesis nula (p = 0.027946 &lt; α = 0.05). Existen diferencias estadísticamente significativas entre al menos dos modelos.</p>
+<p>Se rechaza la hipótesis nula (p = 0.015124 &lt; α = 0.05). Existen diferencias estadísticamente significativas entre al menos dos modelos.</p>
 <h3>Ranking Promedio</h3>
 <ol>
 <li>mlp: 1.000</li>
-<li>gru: 3.000</li>
-<li>cnn_lstm: 3.400</li>
+<li>lstm: 2.600</li>
+<li>cnn_lstm: 3.600</li>
 <li>cnn_gru: 3.800</li>
-<li>lstm: 3.800</li>
+<li>gru: 4.000</li>
 </ol>
 <hr />
 <h2>2. Test Post-Hoc de Nemenyi</h2>
@@ -47,7 +47,7 @@
 <h3>Comparaciones Significativas</h3>
 <ul>
 <li>cnn_gru vs mlp</li>
-<li>lstm vs mlp</li>
+<li>gru vs mlp</li>
 </ul>
 <hr />
 <h2>3. Test de Wilcoxon con Corrección de Bonferroni</h2>
@@ -78,15 +78,15 @@
 <tr>
 <td style="text-align: left;">cnn_gru</td>
 <td style="text-align: left;">cnn_lstm</td>
-<td style="text-align: right;">7</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0.0181637</td>
-<td style="text-align: left;">Despreciable</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">0.3125</td>
+<td style="text-align: right;">0.621857</td>
+<td style="text-align: left;">Mediano</td>
 <td style="text-align: right;">0.04</td>
 <td style="text-align: left;">Despreciable</td>
-<td style="text-align: right;">97.2424</td>
-<td style="text-align: right;">97.2424</td>
-<td style="text-align: right;">1.85298e-05</td>
+<td style="text-align: right;">71.8927</td>
+<td style="text-align: right;">71.6612</td>
+<td style="text-align: right;">0.231484</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">False</td>
 <td style="text-align: left;">No hay diferencias estadísticamente significativas entre cnn_gru y cnn_lstm</td>
@@ -94,15 +94,15 @@
 <tr>
 <td style="text-align: left;">cnn_gru</td>
 <td style="text-align: left;">gru</td>
-<td style="text-align: right;">3</td>
-<td style="text-align: right;">0.3125</td>
-<td style="text-align: right;">0.481319</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">0.4375</td>
+<td style="text-align: right;">0.373918</td>
 <td style="text-align: left;">Pequeño</td>
 <td style="text-align: right;">0.04</td>
 <td style="text-align: left;">Despreciable</td>
-<td style="text-align: right;">97.2424</td>
-<td style="text-align: right;">97.2393</td>
-<td style="text-align: right;">0.00311397</td>
+<td style="text-align: right;">71.8927</td>
+<td style="text-align: right;">71.817</td>
+<td style="text-align: right;">0.0757572</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">False</td>
 <td style="text-align: left;">No hay diferencias estadísticamente significativas entre cnn_gru y gru</td>
@@ -110,15 +110,15 @@
 <tr>
 <td style="text-align: left;">cnn_gru</td>
 <td style="text-align: left;">lstm</td>
-<td style="text-align: right;">6</td>
-<td style="text-align: right;">0.8125</td>
-<td style="text-align: right;">0.0102532</td>
-<td style="text-align: left;">Despreciable</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">0.3125</td>
+<td style="text-align: right;">0.918387</td>
+<td style="text-align: left;">Grande</td>
 <td style="text-align: right;">0.04</td>
 <td style="text-align: left;">Despreciable</td>
-<td style="text-align: right;">97.2424</td>
-<td style="text-align: right;">97.2424</td>
-<td style="text-align: right;">5.8326e-06</td>
+<td style="text-align: right;">71.8927</td>
+<td style="text-align: right;">71.5803</td>
+<td style="text-align: right;">0.312369</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">False</td>
 <td style="text-align: left;">No hay diferencias estadísticamente significativas entre cnn_gru y lstm</td>
@@ -128,13 +128,13 @@
 <td style="text-align: left;">mlp</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0.0625</td>
-<td style="text-align: right;">2.10701</td>
+<td style="text-align: right;">3.18761</td>
 <td style="text-align: left;">Grande</td>
 <td style="text-align: right;">0.2</td>
 <td style="text-align: left;">Pequeño</td>
-<td style="text-align: right;">97.2424</td>
-<td style="text-align: right;">96.3504</td>
-<td style="text-align: right;">0.892043</td>
+<td style="text-align: right;">71.8927</td>
+<td style="text-align: right;">59.4074</td>
+<td style="text-align: right;">12.4853</td>
 <td style="text-align: right;">0.625</td>
 <td style="text-align: left;">False</td>
 <td style="text-align: left;">No hay diferencias estadísticamente significativas entre cnn_gru y mlp</td>
@@ -144,13 +144,13 @@
 <td style="text-align: left;">gru</td>
 <td style="text-align: right;">5</td>
 <td style="text-align: right;">0.625</td>
-<td style="text-align: right;">0.47811</td>
+<td style="text-align: right;">-0.456125</td>
 <td style="text-align: left;">Pequeño</td>
-<td style="text-align: right;">0.04</td>
+<td style="text-align: right;">-0.12</td>
 <td style="text-align: left;">Despreciable</td>
-<td style="text-align: right;">97.2424</td>
-<td style="text-align: right;">97.2393</td>
-<td style="text-align: right;">0.00309544</td>
+<td style="text-align: right;">71.6612</td>
+<td style="text-align: right;">71.817</td>
+<td style="text-align: right;">-0.155727</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">False</td>
 <td style="text-align: left;">No hay diferencias estadísticamente significativas entre cnn_lstm y gru</td>
@@ -158,16 +158,16 @@
 <tr>
 <td style="text-align: left;">cnn_lstm</td>
 <td style="text-align: left;">lstm</td>
-<td style="text-align: right;">6</td>
-<td style="text-align: right;">0.8125</td>
-<td style="text-align: right;">-0.0124372</td>
-<td style="text-align: left;">Despreciable</td>
-<td style="text-align: right;">-0.04</td>
-<td style="text-align: left;">Despreciable</td>
-<td style="text-align: right;">97.2424</td>
-<td style="text-align: right;">97.2424</td>
-<td style="text-align: right;">-1.26972e-05</td>
-<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.0625</td>
+<td style="text-align: right;">0.854911</td>
+<td style="text-align: left;">Grande</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: left;">Pequeño</td>
+<td style="text-align: right;">71.6612</td>
+<td style="text-align: right;">71.5803</td>
+<td style="text-align: right;">0.0808844</td>
+<td style="text-align: right;">0.625</td>
 <td style="text-align: left;">False</td>
 <td style="text-align: left;">No hay diferencias estadísticamente significativas entre cnn_lstm y lstm</td>
 </tr>
@@ -176,13 +176,13 @@
 <td style="text-align: left;">mlp</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0.0625</td>
-<td style="text-align: right;">2.10433</td>
+<td style="text-align: right;">3.14727</td>
 <td style="text-align: left;">Grande</td>
 <td style="text-align: right;">0.2</td>
 <td style="text-align: left;">Pequeño</td>
-<td style="text-align: right;">97.2424</td>
-<td style="text-align: right;">96.3504</td>
-<td style="text-align: right;">0.892024</td>
+<td style="text-align: right;">71.6612</td>
+<td style="text-align: right;">59.4074</td>
+<td style="text-align: right;">12.2538</td>
 <td style="text-align: right;">0.625</td>
 <td style="text-align: left;">False</td>
 <td style="text-align: left;">No hay diferencias estadísticamente significativas entre cnn_lstm y mlp</td>
@@ -190,15 +190,15 @@
 <tr>
 <td style="text-align: left;">gru</td>
 <td style="text-align: left;">lstm</td>
-<td style="text-align: right;">4</td>
-<td style="text-align: right;">0.4375</td>
-<td style="text-align: right;">-0.445558</td>
-<td style="text-align: left;">Pequeño</td>
-<td style="text-align: right;">-0.12</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.1875</td>
+<td style="text-align: right;">0.745408</td>
+<td style="text-align: left;">Mediano</td>
+<td style="text-align: right;">0.12</td>
 <td style="text-align: left;">Despreciable</td>
-<td style="text-align: right;">97.2393</td>
-<td style="text-align: right;">97.2424</td>
-<td style="text-align: right;">-0.00310814</td>
+<td style="text-align: right;">71.817</td>
+<td style="text-align: right;">71.5803</td>
+<td style="text-align: right;">0.236612</td>
 <td style="text-align: right;">1</td>
 <td style="text-align: left;">False</td>
 <td style="text-align: left;">No hay diferencias estadísticamente significativas entre gru y lstm</td>
@@ -208,13 +208,13 @@
 <td style="text-align: left;">mlp</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0.0625</td>
-<td style="text-align: right;">2.11566</td>
+<td style="text-align: right;">3.30008</td>
 <td style="text-align: left;">Grande</td>
 <td style="text-align: right;">0.2</td>
 <td style="text-align: left;">Pequeño</td>
-<td style="text-align: right;">97.2393</td>
-<td style="text-align: right;">96.3504</td>
-<td style="text-align: right;">0.888929</td>
+<td style="text-align: right;">71.817</td>
+<td style="text-align: right;">59.4074</td>
+<td style="text-align: right;">12.4095</td>
 <td style="text-align: right;">0.625</td>
 <td style="text-align: left;">False</td>
 <td style="text-align: left;">No hay diferencias estadísticamente significativas entre gru y mlp</td>
@@ -224,13 +224,13 @@
 <td style="text-align: left;">mlp</td>
 <td style="text-align: right;">0</td>
 <td style="text-align: right;">0.0625</td>
-<td style="text-align: right;">2.1054</td>
+<td style="text-align: right;">3.15653</td>
 <td style="text-align: left;">Grande</td>
 <td style="text-align: right;">0.2</td>
 <td style="text-align: left;">Pequeño</td>
-<td style="text-align: right;">97.2424</td>
-<td style="text-align: right;">96.3504</td>
-<td style="text-align: right;">0.892037</td>
+<td style="text-align: right;">71.5803</td>
+<td style="text-align: right;">59.4074</td>
+<td style="text-align: right;">12.1729</td>
 <td style="text-align: right;">0.625</td>
 <td style="text-align: left;">False</td>
 <td style="text-align: left;">No hay diferencias estadísticamente significativas entre lstm y mlp</td>
@@ -253,42 +253,42 @@
 <tbody>
 <tr>
 <td style="text-align: left;">mlp</td>
-<td style="text-align: right;">96.3504</td>
-<td style="text-align: right;">124.565</td>
-<td style="text-align: right;">-58.3171</td>
-<td style="text-align: right;">251.018</td>
+<td style="text-align: right;">59.4074</td>
+<td style="text-align: right;">5.98885</td>
+<td style="text-align: right;">51.9713</td>
+<td style="text-align: right;">66.8436</td>
 <td style="text-align: right;">5</td>
 </tr>
 <tr>
 <td style="text-align: left;">lstm</td>
-<td style="text-align: right;">97.2424</td>
-<td style="text-align: right;">124.163</td>
-<td style="text-align: right;">-56.9265</td>
-<td style="text-align: right;">251.411</td>
+<td style="text-align: right;">71.5803</td>
+<td style="text-align: right;">9.48108</td>
+<td style="text-align: right;">59.808</td>
+<td style="text-align: right;">83.3527</td>
 <td style="text-align: right;">5</td>
 </tr>
 <tr>
 <td style="text-align: left;">gru</td>
-<td style="text-align: right;">97.2393</td>
-<td style="text-align: right;">124.165</td>
-<td style="text-align: right;">-56.9317</td>
-<td style="text-align: right;">251.41</td>
+<td style="text-align: right;">71.817</td>
+<td style="text-align: right;">9.3322</td>
+<td style="text-align: right;">60.2295</td>
+<td style="text-align: right;">83.4044</td>
 <td style="text-align: right;">5</td>
 </tr>
 <tr>
 <td style="text-align: left;">cnn_lstm</td>
-<td style="text-align: right;">97.2424</td>
-<td style="text-align: right;">124.163</td>
-<td style="text-align: right;">-56.9261</td>
-<td style="text-align: right;">251.411</td>
+<td style="text-align: right;">71.6612</td>
+<td style="text-align: right;">9.5159</td>
+<td style="text-align: right;">59.8457</td>
+<td style="text-align: right;">83.4768</td>
 <td style="text-align: right;">5</td>
 </tr>
 <tr>
 <td style="text-align: left;">cnn_gru</td>
-<td style="text-align: right;">97.2424</td>
-<td style="text-align: right;">124.163</td>
-<td style="text-align: right;">-56.9267</td>
-<td style="text-align: right;">251.412</td>
+<td style="text-align: right;">71.8927</td>
+<td style="text-align: right;">9.4992</td>
+<td style="text-align: right;">60.0979</td>
+<td style="text-align: right;">83.6875</td>
 <td style="text-align: right;">5</td>
 </tr>
 </tbody>
@@ -306,27 +306,27 @@
 <tbody>
 <tr>
 <td style="text-align: left;">mlp</td>
-<td style="text-align: right;">96.3504</td>
+<td style="text-align: right;">59.4074</td>
 <td style="text-align: right;">1</td>
 </tr>
 <tr>
-<td style="text-align: left;">gru</td>
-<td style="text-align: right;">97.2393</td>
+<td style="text-align: left;">lstm</td>
+<td style="text-align: right;">71.5803</td>
 <td style="text-align: right;">2</td>
 </tr>
 <tr>
 <td style="text-align: left;">cnn_lstm</td>
-<td style="text-align: right;">97.2424</td>
+<td style="text-align: right;">71.6612</td>
 <td style="text-align: right;">3</td>
 </tr>
 <tr>
-<td style="text-align: left;">lstm</td>
-<td style="text-align: right;">97.2424</td>
+<td style="text-align: left;">gru</td>
+<td style="text-align: right;">71.817</td>
 <td style="text-align: right;">4</td>
 </tr>
 <tr>
 <td style="text-align: left;">cnn_gru</td>
-<td style="text-align: right;">97.2424</td>
+<td style="text-align: right;">71.8927</td>
 <td style="text-align: right;">5</td>
 </tr>
 </tbody>

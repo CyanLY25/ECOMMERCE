@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 from datetime import datetime
 
@@ -6,42 +6,16 @@ from datetime import datetime
 class PredictionRequest(BaseModel):
     """
     Schema para solicitudes de predicción.
-    Contiene los datos necesarios para realizar una predicción de demanda.
+    Solo requiere el código del producto; el resto de las características
+    (precio, país, historial de demanda) se toman automáticamente del
+    último estado conocido de ese producto, calculado en el despliegue.
     """
-    product_id: Optional[str] = Field(None, description="ID del producto", examples=["PROD123"])
-    features: Dict[str, Any] = Field(
-        ...,
-        description="Características del producto para la predicción",
-        examples=[{
-            "StockCode": 1001,
-            "UnitPrice": 19.99,
-            "CustomerID": 12345,
-            "Country": 1,
-            "Año": 2024,
-            "Mes": 7,
-            "Día": 9,
-            "Hora": 14,
-            "DíaSemana": 3,
-            "SemanaAño": 28,
-            "Trimestre": 3,
-            "EsFinDeSemana": 0,
-            "MesNombre": "Julio"
-        }]
+    stock_code: str = Field(..., description="Código del producto (StockCode)", examples=["10002"])
+    target_date: Optional[str] = Field(
+        None,
+        description="Fecha objetivo de la predicción, formato YYYY-MM-DD. Si se omite, se usa la fecha actual.",
+        examples=["2026-07-20"]
     )
-    
-    @field_validator('features')
-    @classmethod
-    def validate_features(cls, v):
-        """Valida que las características necesarias estén presentes."""
-        required_features = [
-            "StockCode", "UnitPrice", "CustomerID", "Country", "Año", "Mes",
-            "Día", "Hora", "DíaSemana", "SemanaAño", "Trimestre", "EsFinDeSemana",
-            "MesNombre"
-        ]
-        missing = [f for f in required_features if f not in v]
-        if missing:
-            raise ValueError(f"Faltan características requeridas: {', '.join(missing)}")
-        return v
 
 
 class PredictionResponse(BaseModel):
@@ -78,3 +52,45 @@ class HealthCheckResponse(BaseModel):
     model: Optional[str] = None
     encoders_loaded: Optional[int] = None
     scaler_loaded: Optional[bool] = None
+
+
+# ==================== TIENDA (productos / ordenes) ====================
+# Reemplazan a las tablas que antes vivian en Supabase; ahora las sirve
+# este mismo backend, respaldado por SQLite (ver backend/store.py).
+
+class ProductCreate(BaseModel):
+    name: str = Field(..., examples=["Jumbo Bag Red Retrospot"])
+    description: Optional[str] = Field("", examples=["Bolsa de tela grande, estampado retro rojo"])
+    price: float = Field(..., ge=0, examples=[12.90])
+    stock: int = Field(..., ge=0, examples=[100])
+    image_base64: Optional[str] = Field(
+        None, description="Data URI de la imagen (data:image/png;base64,...)"
+    )
+    stock_code: Optional[str] = Field(None, description="Codigo del producto en el dataset historico")
+
+
+class ProductUpdate(BaseModel):
+    name: str
+    description: Optional[str] = ""
+    price: float = Field(..., ge=0)
+    stock: int = Field(..., ge=0)
+    image_base64: Optional[str] = None
+    remove_image: bool = False
+
+
+class OrderItem(BaseModel):
+    name: str
+    quantity: int = Field(..., ge=1)
+    price: float = Field(..., ge=0)
+
+
+class OrderCreate(BaseModel):
+    customer_name: str
+    customer_email: Optional[str] = ""
+    customer_phone: Optional[str] = ""
+    shipping_address: Optional[str] = ""
+    items: list[OrderItem]
+
+
+class OrderStatusUpdate(BaseModel):
+    status: str = Field(..., examples=["Completado"])

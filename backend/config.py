@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     CUSTOMERID_ENCODER_PATH: Path = BACKEND_MODEL_DIR / "customerid_encoder.pkl"
     MESNOMBRE_ENCODER_PATH: Path = BACKEND_MODEL_DIR / "mesnombre_encoder.pkl"
     MODEL_INFO_PATH: Path = BACKEND_MODEL_DIR / "model_info.json"
+    PRODUCT_HISTORY_PATH: Path = BACKEND_MODEL_DIR / "product_history.json"
     
     # API settings
     API_HOST: str = "0.0.0.0"

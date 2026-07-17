@@ -1,5 +1,6 @@
 import sys
 import time
+import json
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -15,11 +16,27 @@ from ia.utils.logger import setup_logger
 from ia.config.config import AIConfig
 
 # Orden exacto de características según el preprocesamiento de entrenamiento
+# (producto-día agregado, con historial de demanda). Debe coincidir con las
+# columnas de ia/dataset/processed/train.csv (sin la columna 'Quantity').
 FEATURE_ORDER = [
-    "StockCode", "UnitPrice", "CustomerID", "Country", "Año", "Mes",
-    "Día", "Hora", "DíaSemana", "SemanaAño", "Trimestre", "EsFinDeSemana",
-    "MesNombre"
+    "StockCode", "UnitPrice", "Country", "NumTransacciones",
+    "lag_1", "lag_7", "lag_14", "lag_30",
+    "rolling_mean_7", "rolling_std_7", "rolling_mean_30",
+    "Mes", "Día", "DíaSemana", "SemanaAño", "Trimestre", "EsFinDeSemana", "MesNombre",
 ]
+
+# Features que se toman del snapshot de historial del producto (ya vienen
+# escaladas/codificadas desde el despliegue, no requieren transformación).
+HISTORY_FEATURES = {
+    "UnitPrice", "Country", "NumTransacciones",
+    "lag_1", "lag_7", "lag_14", "lag_30",
+    "rolling_mean_7", "rolling_std_7", "rolling_mean_30",
+}
+
+MESES_ES = {
+    1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril", 5: "Mayo", 6: "Junio",
+    7: "Julio", 8: "Agosto", 9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre",
+}
 
 # Configurar logger
 logger = setup_logger("prediction", PROJECT_ROOT / "ia" / "logs" / "inference.log")
@@ -50,6 +67,24 @@ def _load_historical_quantity_stats():
 
 
 _HISTORICAL_QUANTITY_STATS = _load_historical_quantity_stats()
+
+
+def _load_product_history():
+    """
+    Carga (una sola vez, a nivel de módulo) el snapshot con el último
+    estado conocido de cada producto (lags, rolling stats, precio, país),
+    generado por ia/deployment/deployer.py durante el despliegue.
+    """
+    try:
+        from backend.config import settings
+        with open(settings.PRODUCT_HISTORY_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        logger.warning(f"No se pudo cargar el historial de productos: {e}")
+        return {}
+
+
+_PRODUCT_HISTORY = _load_product_history()
 
 
 def build_prediction_interpretation(prediction: float) -> str:
@@ -95,11 +130,16 @@ def build_prediction_interpretation(prediction: float) -> str:
 
 def make_prediction(request: PredictionRequest) -> PredictionResponse:
     """
-    Realiza una predicción de demanda usando el modelo entrenado,
-    siguiendo el mismo pipeline de preprocesamiento que durante el entrenamiento.
+    Realiza una predicción de demanda usando el modelo entrenado.
+    
+    Combina: (a) el último estado de historial de demanda conocido del
+    producto (lags, rolling stats, precio, país — precalculados en el
+    despliegue) con (b) las características derivadas de la fecha
+    objetivo (mes, día de semana, etc.), en el mismo orden y forma que
+    usó el pipeline de entrenamiento.
     
     Args:
-        request: Datos de la solicitud de predicción.
+        request: Datos de la solicitud de predicción (stock_code, target_date opcional).
         
     Returns:
         Respuesta con la predicción y metadata.
@@ -108,30 +148,49 @@ def make_prediction(request: PredictionRequest) -> PredictionResponse:
     request_timestamp = datetime.now().isoformat()
     
     try:
-        # Paso 1: Extraer características en el orden correcto
-        features_dict = request.features
+        stock_code = str(request.stock_code)
+        target_date = (
+            datetime.fromisoformat(request.target_date) if request.target_date
+            else datetime.now()
+        )
         
-        # Paso 2: Preprocesar cada característica
+        # Paso 1: Obtener el historial de demanda más reciente del producto
+        history = _PRODUCT_HISTORY.get(stock_code)
+        if history is None:
+            raise ValueError(
+                f"No hay historial de ventas para el producto '{stock_code}'. "
+                "Solo se pueden predecir productos presentes en el histórico de entrenamiento."
+            )
+        
+        # Paso 2: Calcular características derivadas de la fecha objetivo
+        mes_nombre_es = MESES_ES[target_date.month]
+        date_features = {
+            "Mes": target_date.month,
+            "Día": target_date.day,
+            "DíaSemana": target_date.weekday(),
+            "SemanaAño": target_date.isocalendar()[1],
+            "Trimestre": (target_date.month - 1) // 3 + 1,
+            "EsFinDeSemana": int(target_date.weekday() >= 5),
+        }
+        
+        # Paso 3: Armar el vector de entrada en el orden exacto del entrenamiento
         processed_features = []
         for feature_name in FEATURE_ORDER:
-            value = features_dict[feature_name]
-            
-            if feature_name in ["StockCode", "Country", "CustomerID", "MesNombre"]:
-                # Codificar variables categóricas usando los encoders cargados
-                encoded_value = model_loader.encode_feature(feature_name, value)
-                processed_features.append(encoded_value)
-            elif feature_name == "UnitPrice":
-                # Escalar usando el scaler cargado
-                value_scaled = model_loader.scaler.transform([[value]])[0][0]
-                processed_features.append(float(value_scaled))
+            if feature_name == "StockCode":
+                processed_features.append(float(model_loader.encode_feature("StockCode", stock_code)))
+            elif feature_name == "MesNombre":
+                processed_features.append(float(model_loader.encode_feature("MesNombre", mes_nombre_es)))
+            elif feature_name in date_features:
+                processed_features.append(float(date_features[feature_name]))
+            elif feature_name in HISTORY_FEATURES:
+                processed_features.append(float(history[feature_name]))
             else:
-                # Variables numéricas/temporales: usar valor directamente
-                processed_features.append(float(value))
+                raise ValueError(f"No se supo cómo calcular la característica '{feature_name}'")
         
         # Convertir a array numpy
         features_np = np.array(processed_features, dtype=np.float32)
         
-        # Paso 3: Preparar secuencia si es un modelo recurrente
+        # Paso 4: Preparar secuencia si es un modelo recurrente
         is_sequential = model_loader.model_name in ["LSTM", "GRU", "CNN-LSTM", "CNN-GRU"]
         if is_sequential:
             sequence_length = model_loader.sequence_length
@@ -140,13 +199,13 @@ def make_prediction(request: PredictionRequest) -> PredictionResponse:
         else:
             input_data = features_np.reshape(1, -1)
         
-        # Paso 4: Realizar la predicción
+        # Paso 5: Realizar la predicción
         prediction = model_loader.predict(input_data)
         
         # Calcular tiempo de procesamiento en milisegundos
         processing_time_ms = round((time.time() - start_time) * 1000, 2)
         
-        logger.info(f"Predicción completada: {prediction:.4f}")
+        logger.info(f"Predicción completada para producto {stock_code}: {prediction:.4f}")
         logger.info(f"Modelo: {model_loader.model_name}")
         logger.info(f"Tiempo de procesamiento: {processing_time_ms:.2f} ms")
         

@@ -1,6 +1,7 @@
 import sys
 import tempfile
 import uuid
+import json
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, status, BackgroundTasks
 from fastapi.responses import FileResponse
@@ -9,17 +10,23 @@ from fastapi.responses import FileResponse
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from backend.schemas import PredictionRequest, PredictionResponse, HealthCheckResponse, ErrorResponse
+from backend.schemas import (
+    PredictionRequest, PredictionResponse, HealthCheckResponse, ErrorResponse,
+    ProductCreate, ProductUpdate, OrderCreate, OrderStatusUpdate,
+)
 from backend.predict import make_prediction
 from backend.load_model import model_loader
+from backend import store
 from ia.config.config import AIConfig
 from ia.reports.report_data import load_report_data
 from ia.reports.report_generator import ReportGenerator
 from ia.reports import interpretations as interp
 
 router = APIRouter(prefix="/api", tags=["prediction"])
+store_router = APIRouter(prefix="/api/store", tags=["store"])
 
 _config = AIConfig()
+store.init_db()
 
 # Whitelist de figuras que se pueden servir por HTTP (evita exponer el filesystem)
 ALLOWED_FIGURES = {
@@ -66,6 +73,23 @@ async def predict(request: PredictionRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error interno del servidor"
         ) from e
+
+
+@router.get(
+    "/products",
+    summary="Listar productos disponibles para predicción",
+    description="Devuelve los códigos de producto (StockCode) con historial de demanda "
+                "conocido, listos para usarse en /api/predict."
+)
+async def list_products():
+    """Lista los productos disponibles para predicción (tienen snapshot de historial)."""
+    from backend.config import settings
+    try:
+        with open(settings.PRODUCT_HISTORY_PATH, "r", encoding="utf-8") as f:
+            history = json.load(f)
+        return {"products": sorted(history.keys()), "count": len(history)}
+    except Exception:
+        return {"products": [], "count": 0}
 
 
 @router.get(
@@ -259,3 +283,104 @@ async def download_report(formato: str, background_tasks: BackgroundTasks):
         filename=spec["filename"],
         background=background_tasks,
     )
+
+# ==================== TIENDA: PRODUCTOS ====================
+# Estos endpoints reemplazan a las llamadas que antes iban directo a
+# Supabase desde admin_vendedor.py y tienda_cliente.py. Al vivir en este
+# mismo backend (ya desplegado en Render), ambas apps de Streamlit -aunque
+# se despliegan por separado- comparten siempre los mismos datos.
+
+@store_router.get("/products", summary="Listar productos de la tienda")
+async def store_list_products():
+    return {"products": store.list_products()}
+
+
+@store_router.post("/products", status_code=status.HTTP_201_CREATED, summary="Crear producto")
+async def store_create_product(payload: ProductCreate):
+    product = store.create_product(
+        name=payload.name,
+        description=payload.description or "",
+        price=payload.price,
+        stock=payload.stock,
+        image_data=payload.image_base64,
+        stock_code=payload.stock_code,
+    )
+    return product
+
+
+@store_router.put("/products/{product_id}", summary="Actualizar producto")
+async def store_update_product(product_id: str, payload: ProductUpdate):
+    existing = store.get_product(product_id)
+    if not existing:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Producto no encontrado")
+
+    image_data = None
+    update_image = False
+    if payload.remove_image:
+        image_data, update_image = None, True
+    elif payload.image_base64:
+        image_data, update_image = payload.image_base64, True
+
+    product = store.update_product(
+        product_id,
+        name=payload.name,
+        description=payload.description or "",
+        price=payload.price,
+        stock=payload.stock,
+        image_data=image_data,
+        update_image=update_image,
+    )
+    return product
+
+
+@store_router.delete("/products/{product_id}", summary="Eliminar producto")
+async def store_delete_product(product_id: str):
+    deleted = store.delete_product(product_id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Producto no encontrado")
+    return {"status": "ok"}
+
+
+# ==================== TIENDA: ORDENES ====================
+
+@store_router.get("/orders", summary="Listar ordenes")
+async def store_list_orders():
+    return {"orders": store.list_orders()}
+
+
+@store_router.post("/orders", status_code=status.HTTP_201_CREATED, summary="Crear orden")
+async def store_create_order(payload: OrderCreate):
+    products = {p["name"]: p for p in store.list_products()}
+    for item in payload.items:
+        product = products.get(item.name)
+        if not product:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"El producto '{item.name}' ya no esta disponible",
+            )
+        if product["stock"] < item.quantity:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Stock insuficiente para '{item.name}'. Disponible: {product['stock']}",
+            )
+
+    total_amount = sum(item.price * item.quantity for item in payload.items)
+    order = store.create_order(
+        customer_name=payload.customer_name,
+        customer_email=payload.customer_email or "",
+        customer_phone=payload.customer_phone or "",
+        shipping_address=payload.shipping_address or "",
+        items=[item.model_dump() for item in payload.items],
+        total_amount=total_amount,
+    )
+    return order
+
+
+@store_router.put("/orders/{order_id}/status", summary="Cambiar estado de una orden")
+async def store_update_order_status(order_id: str, payload: OrderStatusUpdate):
+    if payload.status not in {"Pendiente", "Completado", "Cancelado"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Estado invalido")
+    order = store.update_order_status(order_id, payload.status)
+    if not order:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Orden no encontrada")
+    return order

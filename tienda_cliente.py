@@ -4,10 +4,11 @@ Tienda online para que los clientes realicen sus pedidos
 """
 
 import streamlit as st
-from supabase import create_client, Client
 import json
 import re
 from datetime import datetime
+
+import store_api
 
 # ==================== CONFIGURACIÓN ====================
 
@@ -44,22 +45,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# ==================== CONEXIÓN A SUPABASE ====================
-
-@st.cache_resource
-def init_supabase() -> Client:
-    """Inicializa la conexión a Supabase"""
-    try:
-        url = st.secrets["supabase"]["url"]
-        key = st.secrets["supabase"]["key"]
-        return create_client(url, key)
-    except Exception as e:
-        st.error(f"❌ Error al conectar con Supabase: {str(e)}")
-        st.info("💡 Asegúrate de configurar tus credenciales en `.streamlit/secrets.toml`")
-        st.stop()
-
-supabase = init_supabase()
-
 # ==================== INICIALIZAR SESIÓN ====================
 
 if 'cart' not in st.session_state:
@@ -74,13 +59,8 @@ if 'order_id' not in st.session_state:
 # ==================== FUNCIONES DE PRODUCTOS ====================
 
 def get_all_products():
-    """Obtiene todos los productos disponibles"""
-    try:
-        response = supabase.table("products").select("*").order("created_at", desc=True).execute()
-        return response.data
-    except Exception as e:
-        st.error(f"Error al obtener productos: {str(e)}")
-        return []
+    """Obtiene todos los productos disponibles (via nuestro backend, no Supabase)"""
+    return store_api.get_all_products()
 
 # ==================== FUNCIONES DE CARRITO ====================
 
@@ -159,44 +139,22 @@ def validate_stock_availability(cart_items):
 # ==================== FUNCIONES DE ORDEN ====================
 
 def create_order(customer_name, customer_email, customer_phone, shipping_address, cart_items):
-    """Crea una nueva orden en la base de datos"""
-    try:
-        # Preparar items en el formato correcto
-        items_json = [
-            {
-                "name": item['name'],
-                "quantity": item['quantity'],
-                "price": item['price']
-            }
-            for item in cart_items
-        ]
+    """Crea una nueva orden (vía nuestro backend, no Supabase)"""
+    # Normalizar teléfono (eliminar caracteres especiales)
+    phone_clean = re.sub(r'[^\d]', '', customer_phone)
 
-        # Calcular total
-        total_amount = sum(item['price'] * item['quantity'] for item in cart_items)
+    items = [
+        {"name": item['name'], "quantity": item['quantity'], "price": item['price']}
+        for item in cart_items
+    ]
 
-        # Normalizar teléfono (eliminar caracteres especiales)
-        phone_clean = re.sub(r'[^\d]', '', customer_phone)
-
-        # Crear orden
-        order_data = {
-            "customer_name": customer_name,
-            "customer_email": customer_email,
-            "customer_phone": phone_clean,
-            "shipping_address": shipping_address,
-            "total_amount": float(total_amount),
-            "status": "Pendiente",
-            "items": items_json
-        }
-
-        response = supabase.table("orders").insert(order_data).execute()
-
-        if response.data:
-            return True, response.data[0]['id'], "✅ Pedido creado exitosamente"
-        else:
-            return False, None, "Error al crear el pedido"
-
-    except Exception as e:
-        return False, None, f"❌ Error al crear el pedido: {str(e)}"
+    return store_api.create_order(
+        customer_name=customer_name,
+        customer_email=customer_email,
+        customer_phone=phone_clean,
+        shipping_address=shipping_address,
+        items=items,
+    )
 
 # ==================== FUNCIONES DE UI ====================
 
@@ -249,6 +207,8 @@ def render_product_card(product):
         st.write(f"*{description}*")
         st.write(f"**S/ {product['price']:.2f}**")
         st.caption(stock_text)
+        if product.get('stock_code'):
+            st.caption(f"🔖 Código: `{product['stock_code']}` — con historial de demanda calculado")
 
         # Input de cantidad y botón
         if is_available:

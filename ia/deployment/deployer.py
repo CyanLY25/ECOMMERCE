@@ -6,6 +6,8 @@ Copia el modelo, scaler y encoders hacia el directorio backend/model/
 import json
 import shutil
 import sys
+import pickle
+import pandas as pd
 from pathlib import Path
 from datetime import datetime
 
@@ -58,6 +60,53 @@ class ModelDeployer:
         
         raise FileNotFoundError("No se encontró best_model.json ni final_best_model.json")
     
+    def _build_product_history_snapshot(self):
+        """
+        Genera un snapshot con el último estado conocido (lags, rolling
+        stats, precio, país) de cada producto, para que el backend pueda
+        predecir a partir de solo StockCode + fecha, sin tener que
+        recalcular el historial completo de ventas en cada request.
+        """
+        self.logger.info("Generando snapshot de historial por producto...")
+
+        train = pd.read_csv(self.config.TRAIN_DATA_PATH)
+        val = pd.read_csv(self.config.VALIDATION_DATA_PATH)
+        test = pd.read_csv(self.config.TEST_DATA_PATH)
+        # El orden train -> val -> test conserva el orden cronológico dentro
+        # de cada producto, porque el split fue por corte de fecha.
+        full = pd.concat([train, val, test], ignore_index=True)
+
+        stockcode_encoder_path = self.config.MODELS_DIR / "stockcode_encoder.pkl"
+        if not stockcode_encoder_path.exists():
+            self.logger.warning("No se encontró stockcode_encoder.pkl; se omite el snapshot")
+            return
+        with open(stockcode_encoder_path, "rb") as f:
+            stockcode_encoder = pickle.load(f)
+
+        feature_cols = [
+            "UnitPrice", "Country", "NumTransacciones",
+            "lag_1", "lag_7", "lag_14", "lag_30",
+            "rolling_mean_7", "rolling_std_7", "rolling_mean_30",
+        ]
+        feature_cols = [c for c in feature_cols if c in full.columns]
+
+        # Última fila conocida de cada producto (más reciente)
+        latest = full.groupby("StockCode", sort=False).tail(1)
+
+        snapshot = {}
+        for _, row in latest.iterrows():
+            try:
+                raw_code = str(stockcode_encoder.inverse_transform([int(row["StockCode"])])[0])
+            except Exception:
+                continue
+            snapshot[raw_code] = {col: float(row[col]) for col in feature_cols}
+
+        snapshot_path = self.backend_model_dir / "product_history.json"
+        with open(snapshot_path, "w", encoding="utf-8") as f:
+            json.dump(snapshot, f, indent=2, ensure_ascii=False)
+
+        self.logger.info(f"Snapshot de {len(snapshot)} productos guardado en {snapshot_path}")
+
     def deploy(self):
         """
         Realiza el despliegue completo del modelo y artefactos
@@ -96,6 +145,9 @@ class ModelDeployer:
                 self.logger.info(f"Artefacto copiado: {artifact}")
             else:
                 self.logger.warning(f"Artefacto no encontrado: {artifact}")
+        
+        # Paso 4.5: Generar snapshot de historial por producto (para inferencia)
+        self._build_product_history_snapshot()
         
         # Paso 5: Generar model_info.json
         model_info_json = {

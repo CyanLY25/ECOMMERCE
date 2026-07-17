@@ -175,6 +175,76 @@ class ImprovedDataPreprocessor:
         logger.info("Tipos de datos convertidos correctamente")
         return df_clean
 
+    def aggregate_to_product_day(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Agrega las líneas de pedido a nivel de demanda diaria por producto.
+        Cambia la unidad de análisis de "línea de pedido individual" a
+        "unidades vendidas del producto X en el día D", que sí tiene
+        autocorrelación temporal aprovechable por los modelos (a diferencia
+        de la línea de pedido individual, que es prácticamente ruido).
+
+        Args:
+            data: DataFrame limpio a nivel de línea de pedido.
+
+        Returns:
+            DataFrame agregado a nivel producto-día.
+        """
+        logger.info("Agregando datos a nivel producto-día...")
+        df = data.copy()
+        df["InvoiceDate"] = df["InvoiceDate"].dt.normalize()
+
+        agg = df.groupby(["StockCode", "InvoiceDate"]).agg(
+            Quantity=("Quantity", "sum"),
+            UnitPrice=("UnitPrice", "mean"),
+            Country=("Country", lambda x: x.mode().iloc[0]),
+            NumTransacciones=("Quantity", "count"),
+        ).reset_index()
+
+        agg = agg.sort_values(["StockCode", "InvoiceDate"]).reset_index(drop=True)
+        logger.info(f"Dataset agregado: {len(agg)} filas producto-día (antes: {len(df)} líneas de pedido)")
+        return agg
+
+    def add_demand_history_features(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Añade variables de demanda histórica (lags y estadísticos móviles)
+        por producto. Son las variables más informativas para pronóstico
+        de series de tiempo y no existían en el pipeline original.
+
+        Args:
+            data: DataFrame agregado a nivel producto-día.
+
+        Returns:
+            DataFrame con columnas lag_1, lag_7, lag_14, lag_30,
+            rolling_mean_7, rolling_std_7, rolling_mean_30.
+        """
+        logger.info("Generando variables de demanda histórica (lags, rolling)...")
+        df = data.sort_values(["StockCode", "InvoiceDate"]).reset_index(drop=True).copy()
+
+        for lag in [1, 7, 14, 30]:
+            df[f"lag_{lag}"] = df.groupby("StockCode")["Quantity"].shift(lag)
+
+        df["rolling_mean_7"] = (
+            df.groupby("StockCode")["Quantity"]
+              .apply(lambda s: s.shift(1).rolling(7).mean())
+              .reset_index(level=0, drop=True)
+        )
+        df["rolling_std_7"] = (
+            df.groupby("StockCode")["Quantity"]
+              .apply(lambda s: s.shift(1).rolling(7).std())
+              .reset_index(level=0, drop=True)
+        )
+        df["rolling_mean_30"] = (
+            df.groupby("StockCode")["Quantity"]
+              .apply(lambda s: s.shift(1).rolling(30).mean())
+              .reset_index(level=0, drop=True)
+        )
+
+        before = len(df)
+        lag_cols = [c for c in df.columns if c.startswith(("lag_", "rolling_"))]
+        df = df.dropna(subset=lag_cols).reset_index(drop=True)
+        logger.info(f"Filas sin historial suficiente eliminadas: {before - len(df)} (quedan {len(df)})")
+        return df
+
     def feature_engineering(self, data: pd.DataFrame) -> pd.DataFrame:
         """
         Crea nuevas variables para el modelo y elimina las no necesarias (incluyendo data leakage).
@@ -189,16 +259,22 @@ class ImprovedDataPreprocessor:
         df = data.copy()
         
         # Extraer componentes de fecha
-        df["Año"] = df["InvoiceDate"].dt.year
+        # Nota: no se extrae "Año" porque, tras agregar a producto-día y exigir
+        # 30 días de historial por producto, todo el rango útil cae dentro de
+        # un único año → quedaría como columna constante (sin valor predictivo).
         df["Mes"] = df["InvoiceDate"].dt.month
         df["Día"] = df["InvoiceDate"].dt.day
-        df["Hora"] = df["InvoiceDate"].dt.hour
         df["DíaSemana"] = df["InvoiceDate"].dt.dayofweek  # 0=Lunes, 6=Domingo
         df["SemanaAño"] = df["InvoiceDate"].dt.isocalendar().week
         df["Trimestre"] = df["InvoiceDate"].dt.quarter
         
         # Variable EsFinDeSemana
         df["EsFinDeSemana"] = (df["DíaSemana"] >= 5).astype(int)
+        
+        # FechaOrden: representación numérica de la fecha, usada únicamente
+        # para ordenar el split cronológico en split_dataset(). No se usa
+        # como feature del modelo (se elimina antes de guardar los splits).
+        df["FechaOrden"] = df["InvoiceDate"].astype("int64") // 10**9
         
         # MesNombre (lo codificaremos luego)
         mes_nombres = {1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril",
@@ -216,7 +292,7 @@ class ImprovedDataPreprocessor:
             
         # 2. InvoiceDate: Ya extrajimos todas las características temporales → ELIMINAR
         columns_to_remove.append("InvoiceDate")
-        self.report_data["columns_removed"].append(("InvoiceDate", "Ya extrajimos características temporales (Año, Mes, Día, Hora, DíaSemana, SemanaAño, Trimestre, EsFinDeSemana)"))
+        self.report_data["columns_removed"].append(("InvoiceDate", "Ya extrajimos características temporales (Año, Mes, Día, DíaSemana, SemanaAño, Trimestre, EsFinDeSemana, FechaOrden)"))
         
         # 3. InvoiceNo: Identificador único de transacción → No útil para predicción → ELIMINAR
         columns_to_remove.append("InvoiceNo")
@@ -289,8 +365,13 @@ class ImprovedDataPreprocessor:
         """
         df = data.copy()
         
-        # Variables a escalar: solo UnitPrice (continuo)
-        cols_to_scale = ["UnitPrice"]
+        # Variables a escalar: continuas (precio, historial de demanda)
+        cols_to_scale = [
+            "UnitPrice", "NumTransacciones",
+            "lag_1", "lag_7", "lag_14", "lag_30",
+            "rolling_mean_7", "rolling_std_7", "rolling_mean_30",
+        ]
+        cols_to_scale = [c for c in cols_to_scale if c in df.columns]
         
         self.scaler = StandardScaler()
         df[cols_to_scale] = self.scaler.fit_transform(df[cols_to_scale])
@@ -344,21 +425,19 @@ class ImprovedDataPreprocessor:
         Returns:
             Tupla con (train_data, val_data, test_data).
         """
-        logger.info("Dividiendo dataset en train, validation y test...")
+        logger.info("Dividiendo dataset en train, validation y test (corte cronológico)...")
         
-        # Primero, separar train (70%) y temp (30%)
-        train, temp = train_test_split(
-            data,
-            test_size=(self.config.TEST_SIZE + self.config.VALIDATION_SIZE),
-            random_state=self.config.RANDOM_SEED
-        )
+        # Split cronológico por FechaOrden, no aleatorio: en un problema de
+        # series de tiempo, un split aleatorio filtra información del futuro
+        # hacia el pasado (data leakage temporal) y sobreestima el desempeño.
+        data_sorted = data.sort_values("FechaOrden").reset_index(drop=True)
+        n = len(data_sorted)
+        train_end = int(n * (1 - self.config.TEST_SIZE - self.config.VALIDATION_SIZE))
+        val_end = int(n * (1 - self.config.TEST_SIZE))
         
-        # Luego, dividir temp en validation (15%) y test (15%)
-        val, test = train_test_split(
-            temp,
-            test_size=0.5,
-            random_state=self.config.RANDOM_SEED
-        )
+        train = data_sorted.iloc[:train_end].drop(columns=["FechaOrden"])
+        val = data_sorted.iloc[train_end:val_end].drop(columns=["FechaOrden"])
+        test = data_sorted.iloc[val_end:].drop(columns=["FechaOrden"])
         
         logger.info(f"Tamaños: Train={len(train)}, Validation={len(val)}, Test={len(test)}")
         return train, val, test
@@ -526,6 +605,10 @@ class ImprovedDataPreprocessor:
         df = self.handle_missing_values(df)
         df = self.remove_invalid_rows(df)
         df = self.convert_data_types(df)
+        
+        # Paso 2.5: Agregar a nivel producto-día y generar variables de demanda histórica
+        df = self.aggregate_to_product_day(df)
+        df = self.add_demand_history_features(df)
         
         # Paso 3: Feature Engineering
         df = self.feature_engineering(df)

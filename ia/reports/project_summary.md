@@ -1,8 +1,8 @@
 # Resumen del Proyecto de Predicción de Demanda
 
-**Fecha:** 2026-07-09
+**Fecha:** 2026-07-16
 
-**Hora:** 21:58:09
+**Hora:** 14:38:28
 
 **Versión:** 1.0
 
@@ -11,11 +11,23 @@
 
 - Archivo: OnlineRetail.xlsx
 
-- Número de registros: 274884
+- Número de registros: 99610
 
 
 
 ## 2. Fases Ejecutadas
+
+- **Preprocessing**: ✅ Completado
+
+- **Training**: ✅ Completado
+
+- **Model Comparison**: ❌ Fallido
+
+- **Cross Validation**: ✅ Completado
+
+- **Hyperparameter Tuning**: ✅ Completado
+
+- **Statistical Tests**: ✅ Completado
 
 - **Deployment**: ✅ Completado
 
@@ -23,15 +35,15 @@
 
 ## 3. Modelos Entrenados
 
-- **MLP**: RMSE=44.2717, MAE=11.3878, R²=0.0328
+- **MLP**: RMSE=67.1360, MAE=18.2675, R²=0.1767
 
-- **LSTM**: RMSE=45.0233, MAE=12.3424, R²=-0.0001
+- **LSTM**: RMSE=64.7228, MAE=26.6508, R²=0.1423
 
-- **GRU**: RMSE=45.0202, MAE=12.6892, R²=-0.0000
+- **GRU**: RMSE=64.7743, MAE=24.5323, R²=0.1410
 
-- **CNN-LSTM**: RMSE=45.0321, MAE=12.0612, R²=-0.0005
+- **CNN-LSTM**: RMSE=64.6776, MAE=25.3840, R²=0.1435
 
-- **CNN-GRU**: RMSE=45.0230, MAE=12.3595, R²=-0.0001
+- **CNN-GRU**: RMSE=64.9452, MAE=25.8656, R²=0.1364
 
 
 
@@ -55,4 +67,4 @@
 
 ## 6. Tiempo Total
 
-- **00:00:00**
+- **05:49:13**

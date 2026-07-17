@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+from datetime import date
 
 # Configuration
 API_URL = "https://ecommerce-9u1d.onrender.com"
@@ -63,129 +64,100 @@ except Exception as e:
     st.error(f"❌ Error al verificar estado del backend: {str(e)}")
     st.stop()
 
+# ============================================================
+# Cargar lista de productos disponibles (con historial de demanda)
+# ============================================================
+@st.cache_data(ttl=600, show_spinner=False)
+def get_available_products():
+    resp = requests.get(f"{API_URL}/api/products", timeout=10)
+    resp.raise_for_status()
+    data = resp.json()
+    return data.get("products", [])
+
+try:
+    available_products = get_available_products()
+except Exception:
+    available_products = []
+
 # Prediction form
 st.header("🔍 Realizar Predicción")
-st.write("Ingrese los datos para realizar la predicción de demanda:")
+st.write("""
+Selecciona un producto y una fecha objetivo. El sistema toma automáticamente
+el historial de demanda más reciente de ese producto (ventas de los últimos
+1, 7, 14 y 30 días, promedio móvil, precio, país) para calcular la predicción —
+no necesitas ingresar esos datos a mano.
+""")
+
+if not available_products:
+    st.warning(
+        "⚠️ No se pudo cargar la lista de productos desde el backend "
+        "(`/api/products`). Puedes escribir el código manualmente, pero "
+        "solo funcionará si el producto tiene historial de ventas conocido."
+    )
 
 with st.form("prediction_form"):
-    col1, col2, col3 = st.columns(3)
-    
+    col1, col2 = st.columns(2)
+
     with col1:
-        stock_code = st.text_input("StockCode", value="85123A")
-        unit_price = st.number_input("UnitPrice", min_value=0.0, step=0.01, value=19.99)
-        customer_id = st.text_input("CustomerID", value="17850")
-        country = st.selectbox(
-            "Country",
-            [
-                "Australia",
-                "Austria",
-                "Bahrain",
-                "Belgium",
-                "Brazil",
-                "Canada",
-                "Channel Islands",
-                "Cyprus",
-                "Czech Republic",
-                "Denmark",
-                "EIRE",
-                "European Community",
-                "Finland",
-                "France",
-                "Germany",
-                "Greece",
-                "Iceland",
-                "Israel",
-                "Italy",
-                "Japan",
-                "Lebanon",
-                "Lithuania",
-                "Malta",
-                "Netherlands",
-                "Norway",
-                "Poland",
-                "Portugal",
-                "RSA",
-                "Saudi Arabia",
-                "Singapore",
-                "Spain",
-                "Sweden",
-                "Switzerland",
-                "USA",
-                "United Arab Emirates",
-                "United Kingdom",
-                "Unspecified"
-            ],
-            index=36   # United Kingdom por defecto
-        )
-    
+        if available_products:
+            stock_code = st.selectbox(
+                "Producto (StockCode)",
+                options=available_products,
+                index=0,
+                help=f"{len(available_products)} productos con historial de demanda conocido."
+            )
+        else:
+            stock_code = st.text_input("Producto (StockCode)", value="85123A")
+
     with col2:
-        year = st.selectbox("Año", options=[2010, 2011], index=1)
-        month = st.selectbox("Mes", options=list(range(1, 13)), index=6)
-        day = st.number_input("Día", min_value=1, max_value=31, value=9)
-        hour = st.number_input("Hora", min_value=0, max_value=23, value=14)
-    
-    with col3:
-        day_of_week = st.selectbox("DíaSemana", options=list(range(0, 7)), index=3)
-        week_of_year = st.number_input("SemanaAño", min_value=1, max_value=53, value=28)
-        quarter = st.selectbox("Trimestre", options=[1, 2, 3, 4], index=2)
-        is_weekend = st.checkbox("EsFinDeSemana", value=False)
-    
-    month_name = st.selectbox("MesNombre", options=["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"], index=6)
-    
+        target_date = st.date_input(
+            "Fecha objetivo de la predicción",
+            value=date.today(),
+            help="Fecha para la que quieres estimar la demanda del producto."
+        )
+
     submit_button = st.form_submit_button(label="Realizar Predicción")
 
 # Handle form submission
 if submit_button:
-    # Prepare features
-    features = {
-        "StockCode": stock_code,
-        "UnitPrice": unit_price,
-        "CustomerID": customer_id,
-        "Country": country,
-        "Año": year,
-        "Mes": month,
-        "Día": day,
-        "Hora": hour,
-        "DíaSemana": day_of_week,
-        "SemanaAño": week_of_year,
-        "Trimestre": quarter,
-        "EsFinDeSemana": 1 if is_weekend else 0,
-        "MesNombre": month_name
+    payload = {
+        "stock_code": stock_code,
+        "target_date": target_date.isoformat(),
     }
-    
+
     # Make prediction request
     with st.spinner("Realizando predicción..."):
         try:
             response = requests.post(
                 f"{API_URL}/api/predict",
-                json={"features": features},
+                json=payload,
                 timeout=10
             )
             response.raise_for_status()
             
             prediction_data = response.json()
             
-            # Display results
-            st.subheader("✅ Resultado de la Predicción")
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                st.metric("Demanda estimada", f"{prediction_data.get('prediction',0):.2f} unidades")
-            
-            with col2:
-                st.metric("Modelo", prediction_data.get('model', 'N/A'))
-            
-            with col3:
-                st.metric("Tiempo", f"{prediction_data.get('processing_time_ms', 0):.2f} ms")
-            
-            st.write(f"Timestamp: {prediction_data.get('timestamp')}")
-            if prediction_data.get("status") == "success":
-                st.success("Predicción realizada correctamente")
+            if prediction_data.get("status") != "success":
+                st.error(f"❌ {prediction_data.get('status')}")
             else:
-                st.error(prediction_data.get("status"))
+                # Display results
+                st.subheader("✅ Resultado de la Predicción")
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.metric("Demanda estimada", f"{prediction_data.get('prediction', 0):.2f} unidades")
+                
+                with col2:
+                    st.metric("Modelo", prediction_data.get('model', 'N/A'))
+                
+                with col3:
+                    st.metric("Tiempo", f"{prediction_data.get('processing_time_ms', 0):.2f} ms")
+                
+                st.write(f"Timestamp: {prediction_data.get('timestamp')}")
+                st.success("Predicción realizada correctamente")
 
-            if prediction_data.get("interpretation"):
-                st.info(f"🧠 **Interpretación:** {prediction_data['interpretation']}")
+                if prediction_data.get("interpretation"):
+                    st.info(f"🧠 **Interpretación:** {prediction_data['interpretation']}")
             
         except requests.exceptions.ConnectionError:
             st.error("❌ No se puede conectar al backend para realizar la predicción")
@@ -194,7 +166,7 @@ if submit_button:
         except requests.exceptions.HTTPError as e:
             try:
                 error_detail = response.json().get('detail', str(e))
-            except:
+            except Exception:
                 error_detail = str(e)
             st.error(f"❌ Error en la API: {error_detail}")
         except Exception as e:

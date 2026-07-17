@@ -1,6 +1,6 @@
 {
-    "preprocessing": false,
-    "training": false,
+    "preprocessing": true,
+    "training": true,
     "model_comparison": false,
     "cross_validation": false,
     "hyperparameter_tuning": false,
@@ -12,13 +12,61 @@
         "mae": 5.5076751708984375,
         "r2": -0.03934049606323242
     },
-    "execution_time": "00:00:00",
+    "execution_time": "05:49:13",
     "phases": [
         {
+            "name": "Preprocessing",
+            "start_time": "2026-07-16T08:49:15.840923",
+            "end_time": "2026-07-16T08:49:54.326056",
+            "duration_seconds": 38.48513317108154,
+            "success": true,
+            "error": null
+        },
+        {
+            "name": "Training",
+            "start_time": "2026-07-16T08:49:54.326646",
+            "end_time": "2026-07-16T09:05:16.382282",
+            "duration_seconds": 922.0556361675262,
+            "success": true,
+            "error": null
+        },
+        {
+            "name": "Model Comparison",
+            "start_time": "2026-07-16T09:05:16.382708",
+            "end_time": "2026-07-16T09:05:16.417723",
+            "duration_seconds": 0.03501486778259277,
+            "success": false,
+            "error": "cannot import name 'ModelSelector' from 'ia.evaluation.model_selector' (C:\\Users\\milto\\OneDrive\\Desktop\\7 CICLO\\1 ING SOFTWARE\\WEBWO DE SANTONS\\ECOMMERCE\\ia\\evaluation\\model_selector.py)"
+        },
+        {
+            "name": "Cross Validation",
+            "start_time": "2026-07-16T09:05:16.418043",
+            "end_time": "2026-07-16T11:02:51.442101",
+            "duration_seconds": 7055.024058580399,
+            "success": true,
+            "error": null
+        },
+        {
+            "name": "Hyperparameter Tuning",
+            "start_time": "2026-07-16T11:02:51.442484",
+            "end_time": "2026-07-16T14:38:27.000139",
+            "duration_seconds": 12935.55765414238,
+            "success": true,
+            "error": null
+        },
+        {
+            "name": "Statistical Tests",
+            "start_time": "2026-07-16T14:38:27.001705",
+            "end_time": "2026-07-16T14:38:28.778938",
+            "duration_seconds": 1.7772326469421387,
+            "success": true,
+            "error": null
+        },
+        {
             "name": "Deployment",
-            "start_time": "2026-07-09T21:58:09.650618",
-            "end_time": "2026-07-09T21:58:09.659051",
-            "duration_seconds": 0.008433103561401367,
+            "start_time": "2026-07-16T14:38:28.779242",
+            "end_time": "2026-07-16T14:38:28.860388",
+            "duration_seconds": 0.081146240234375,
             "success": true,
             "error": null
         }

@@ -4,7 +4,6 @@ Panel completo para vendedores con gestión de productos y órdenes
 """
 
 import streamlit as st
-from supabase import create_client, Client
 import pandas as pd
 from datetime import datetime, timedelta
 import json
@@ -18,6 +17,8 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from io import BytesIO
 from PIL import Image
 import uuid
+
+import store_api
 
 # ==================== CONFIGURACIÓN ====================
 
@@ -41,173 +42,45 @@ render_app_navigation("vendedor")
 
 # Sin estilos CSS personalizados - usamos colores nativos de Streamlit
 
-# ==================== CONEXIÓN A SUPABASE ====================
-
-
-@st.cache_resource
-def init_supabase() -> Client:
-    """Inicializa la conexión a Supabase"""
-    try:
-        url = st.secrets["supabase"]["url"]
-        key = st.secrets["supabase"]["key"]
-        return create_client(url, key)
-    except Exception as e:
-        st.error(f"❌ Error al conectar con Supabase: {str(e)}")
-        st.info(
-            "💡 Asegúrate de configurar tus credenciales en `.streamlit/secrets.toml`")
-        st.stop()
-
-
-supabase = init_supabase()
-
-# ==================== FUNCIONES DE IMÁGENES ====================
-
-def upload_image_to_supabase(uploaded_file):
-    """Sube una imagen a Supabase Storage y retorna la URL pública"""
-    try:
-        # Generar nombre único para el archivo
-        file_extension = uploaded_file.name.split('.')[-1]
-        unique_filename = f"{uuid.uuid4()}.{file_extension}"
-
-        # Leer el contenido del archivo
-        file_bytes = uploaded_file.read()
-
-        # Subir a Supabase Storage
-        response = supabase.storage.from_("product-images").upload(
-            unique_filename,
-            file_bytes,
-            file_options={"content-type": uploaded_file.type}
-        )
-
-        # Obtener URL pública
-        public_url = supabase.storage.from_("product-images").get_public_url(unique_filename)
-
-        return True, public_url
-    except Exception as e:
-        return False, f"Error al subir imagen: {str(e)}"
-
-def delete_image_from_supabase(image_url):
-    """Elimina una imagen de Supabase Storage"""
-    try:
-        if not image_url:
-            return True, "No hay imagen para eliminar"
-
-        # Extraer el nombre del archivo de la URL
-        filename = image_url.split('/')[-1]
-
-        # Eliminar de Supabase Storage
-        supabase.storage.from_("product-images").remove([filename])
-
-        return True, "Imagen eliminada"
-    except Exception as e:
-        return False, f"Error al eliminar imagen: {str(e)}"
-
-# ==================== FUNCIONES DE PRODUCTOS ====================
-
+# ==================== FUNCIONES DE PRODUCTOS / ÓRDENES ====================
+# Antes hablaban directo con Supabase; ahora hablan por HTTP con nuestro
+# propio backend (el mismo desplegado en Render para las predicciones),
+# a través de store_api. Se mantienen los mismos nombres y firmas para no
+# tocar el resto del archivo.
 
 def get_all_products():
-    """Obtiene todos los productos de la base de datos"""
-    try:
-        response = supabase.table("products").select(
-            "*").order("created_at", desc=True).execute()
-        return response.data
-    except Exception as e:
-        st.error(f"Error al obtener productos: {str(e)}")
-        return []
+    """Obtiene todos los productos de la tienda"""
+    return store_api.get_all_products()
 
 
 def create_product(name, description, price, stock, image_url=None):
-    """Crea un nuevo producto"""
-    try:
-        data = {
-            "name": name,
-            "description": description,
-            "price": float(price),
-            "stock": int(stock)
-        }
-        if image_url:
-            data["image_url"] = image_url
-        response = supabase.table("products").insert(data).execute()
-        return True, "✅ Producto creado exitosamente"
-    except Exception as e:
-        return False, f"❌ Error al crear producto: {str(e)}"
+    """Crea un nuevo producto. `image_url` aquí es en realidad una data URI
+    (ya convertida desde el archivo subido) o None."""
+    return store_api.create_product(name, description, price, stock, image_data_uri=image_url)
 
 
-def update_product(product_id, name, description, price, stock, image_url=None):
-    """Actualiza un producto existente"""
-    try:
-        data = {
-            "name": name,
-            "description": description,
-            "price": float(price),
-            "stock": int(stock)
-        }
-        if image_url is not None:  # Permitir actualizar incluso si es None (para borrar imagen)
-            data["image_url"] = image_url
-        response = supabase.table("products").update(
-            data).eq("id", product_id).execute()
-        return True, "✅ Producto actualizado exitosamente"
-    except Exception as e:
-        return False, f"❌ Error al actualizar producto: {str(e)}"
+def update_product(product_id, name, description, price, stock, image_url=None, remove_image=False):
+    """Actualiza un producto existente."""
+    return store_api.update_product(
+        product_id, name, description, price, stock,
+        image_data_uri=image_url, remove_image=remove_image
+    )
 
 
 def delete_product(product_id):
     """Elimina un producto"""
-    try:
-        response = supabase.table("products").delete().eq(
-            "id", product_id).execute()
-        return True, "✅ Producto eliminado exitosamente"
-    except Exception as e:
-        return False, f"❌ Error al eliminar producto: {str(e)}"
-
-
-def get_product_by_name(name):
-    """Busca un producto por nombre"""
-    try:
-        response = supabase.table("products").select(
-            "*").eq("name", name).execute()
-        if response.data and len(response.data) > 0:
-            return response.data[0]
-        return None
-    except Exception as e:
-        st.error(f"Error al buscar producto: {str(e)}")
-        return None
-
-# ==================== FUNCIONES DE ÓRDENES ====================
+    return store_api.delete_product(product_id)
 
 
 def get_all_orders():
     """Obtiene todas las órdenes"""
-    try:
-        response = supabase.table("orders").select(
-            "*").order("created_at", desc=True).execute()
-        return response.data
-    except Exception as e:
-        st.error(f"Error al obtener órdenes: {str(e)}")
-        return []
+    return store_api.get_all_orders()
 
 
 def update_order_status(order_id, new_status, items):
-    """Actualiza el estado de una orden y el stock si es necesario"""
-    try:
-        # Actualizar estado de la orden
-        response = supabase.table("orders").update(
-            {"status": new_status}).eq("id", order_id).execute()
-
-        # Si el estado es "Completado", descontar el stock
-        if new_status == "Completado":
-            for item in items:
-                product = get_product_by_name(item["name"])
-                if product:
-                    new_stock = product["stock"] - item["quantity"]
-                    if new_stock < 0:
-                        new_stock = 0
-                    supabase.table("products").update(
-                        {"stock": new_stock}).eq("id", product["id"]).execute()
-
-        return True, f"✅ Orden marcada como {new_status}"
-    except Exception as e:
-        return False, f"❌ Error al actualizar orden: {str(e)}"
+    """Actualiza el estado de una orden. El backend descuenta el stock
+    automáticamente cuando el nuevo estado es 'Completado'."""
+    return store_api.update_order_status(order_id, new_status)
 
 # ==================== FUNCIONES DE MÉTRICAS ====================
 
@@ -855,6 +728,8 @@ def page_products():
                         if image_url:
                             st.image(image_url, width=80)
                         st.write(f"**{product['name']}**")
+                        if product.get('stock_code'):
+                            st.caption(f"🔖 {product['stock_code']}")
 
                     with col2:
                         desc = product.get('description', '')
@@ -921,17 +796,12 @@ def page_products():
                     st.error("❌ El nombre del producto es obligatorio")
                 elif price <= 0:
                     st.error("❌ El precio debe ser mayor a 0")
+                elif uploaded_image and uploaded_image.size > 3 * 1024 * 1024:
+                    st.error("❌ La imagen no debe superar 3 MB")
                 else:
-                    # Subir imagen si fue cargada
-                    image_url = None
-                    if uploaded_image:
-                        with st.spinner("📤 Subiendo imagen..."):
-                            success_img, result_img = upload_image_to_supabase(uploaded_image)
-                            if success_img:
-                                image_url = result_img
-                            else:
-                                st.error(result_img)
-                                st.stop()
+                    # Convertir la imagen a data URI (se guarda directo en
+                    # nuestro backend, sin depender de un servicio externo)
+                    image_url = store_api.file_to_data_uri(uploaded_image) if uploaded_image else None
 
                     success, message = create_product(
                         name, description, price, stock, image_url)
@@ -975,6 +845,10 @@ def page_products():
             with col_img2:
                 st.warning("⚠️ La imagen anterior será eliminada al guardar")
 
+        remove_current_image = False
+        if current_image_url and not new_uploaded_image:
+            remove_current_image = st.checkbox("🗑️ Quitar la imagen actual (dejar el producto sin imagen)")
+
         with st.form("form_edit_product"):
             name = st.text_input("Nombre del Producto *",
                                  value=product['name'])
@@ -1001,28 +875,16 @@ def page_products():
                     st.error("❌ El nombre del producto es obligatorio")
                 elif price <= 0:
                     st.error("❌ El precio debe ser mayor a 0")
+                elif new_uploaded_image and new_uploaded_image.size > 3 * 1024 * 1024:
+                    st.error("❌ La imagen no debe superar 3 MB")
                 else:
-                    # Manejar imagen
-                    image_url_to_update = None
-                    if new_uploaded_image:
-                        with st.spinner("📤 Subiendo nueva imagen..."):
-                            # Eliminar imagen anterior si existe
-                            if current_image_url:
-                                delete_image_from_supabase(current_image_url)
-
-                            # Subir nueva imagen
-                            success_img, result_img = upload_image_to_supabase(new_uploaded_image)
-                            if success_img:
-                                image_url_to_update = result_img
-                            else:
-                                st.error(result_img)
-                                st.stop()
-                    else:
-                        # Mantener la imagen actual
-                        image_url_to_update = current_image_url
+                    # Convertir la nueva imagen (si hay) a data URI; si no hay
+                    # imagen nueva y no se pidió quitarla, se mantiene la actual.
+                    image_url_to_update = store_api.file_to_data_uri(new_uploaded_image) if new_uploaded_image else None
 
                     success, message = update_product(
-                        product['id'], name, description, price, stock, image_url_to_update)
+                        product['id'], name, description, price, stock,
+                        image_url=image_url_to_update, remove_image=remove_current_image)
                     if success:
                         st.success(message)
                         del st.session_state.editing_product
@@ -1266,7 +1128,7 @@ def main():
         st.subheader("ℹ️ Información")
         st.write("**Sistema E-Commerce**")
         st.write("Versión 1.0")
-        st.write("Powered by Streamlit + Supabase")
+        st.write("Powered by Streamlit + FastAPI")
 
     # Renderizar página seleccionada
     if page == "📊 Dashboard":

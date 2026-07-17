@@ -114,11 +114,9 @@ class PipelineManager:
         """
         Ejecuta la fase de comparación de modelos y selección del mejor.
         """
-        from ia.evaluation.model_selector import ModelSelector
+        from ia.evaluation.model_selector import main as select_best_model
         
-        selector = ModelSelector(self.config)
-        selector.load_metrics()
-        selector.compare_models()
+        select_best_model()
         selector.save_best_model()
         
     def _run_cross_validation(self):
