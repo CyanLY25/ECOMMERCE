@@ -6,9 +6,51 @@ Tienda online para que los clientes realicen sus pedidos
 import streamlit as st
 import json
 import re
+import urllib.parse
 from datetime import datetime
 
 import store_api
+
+# ==================== FALLBACK DE IMÁGENES ====================
+# Paleta por categoría de producto, para generar una portada consistente
+# cuando el producto no trae `image_url` (por ejemplo, los productos
+# sembrados automáticamente desde el histórico, que no tienen foto real).
+_IMG_PALETTE = {
+    "jumbo bag": ("c0392b", "ffffff"),
+    "t-light holder": ("d68910", "ffffff"),
+    "wrap ": ("d63384", "ffffff"),
+    "mirror": ("5d6d7e", "ffffff"),
+    "wooden frame": ("a67c52", "ffffff"),
+    "cutlery": ("16a085", "ffffff"),
+    "bowl": ("e67e22", "ffffff"),
+    "hottie": ("c0392b", "ffffff"),
+    "hot water bottle": ("c0392b", "ffffff"),
+    "parasol": ("8e44ad", "ffffff"),
+    "feather pen": ("6c3483", "ffffff"),
+    "apron": ("d63384", "ffffff"),
+    "notebook": ("27ae60", "ffffff"),
+    "ribbons": ("b7950b", "ffffff"),
+    "screwdriver": ("566573", "ffffff"),
+    "bird": ("795548", "ffffff"),
+}
+
+
+def get_product_image_url(product):
+    """Devuelve la imagen del producto, o una portada generada al vuelo
+    (placehold.co) si el producto no tiene `image_url` propia."""
+    image_url = product.get('image_url')
+    if image_url:
+        return image_url
+
+    name = product.get('name', 'Producto')
+    bg, fg = "2c3e50", "ffffff"
+    for key, colors in _IMG_PALETTE.items():
+        if key in name.lower():
+            bg, fg = colors
+            break
+
+    text = urllib.parse.quote(name)
+    return f"https://placehold.co/600x450/{bg}/{fg}?text={text}&font=poppins"
 
 # ==================== CONFIGURACIÓN ====================
 
@@ -181,27 +223,15 @@ def render_product_card(product):
     # Usar container de Streamlit en lugar de HTML
     with st.container():
         # Mostrar imagen del producto con tamaño estandarizado
-        image_url = product.get('image_url')
-        if image_url:
-            # Contenedor con altura fija para todas las imágenes usando CSS personalizado
-            st.markdown(
-                f"""
-                <div class='product-image-container'>
-                    <img src='{image_url}' alt='{product['name']}'>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-        else:
-            # Placeholder cuando no hay imagen con altura idéntica
-            st.markdown(
-                """
-                <div class='product-image-container'>
-                    <span style='font-size: 64px; opacity: 0.3;'>🖼️</span>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+        image_url = get_product_image_url(product)
+        st.markdown(
+            f"""
+            <div class='product-image-container'>
+                <img src='{image_url}' alt='{product['name']}'>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
         st.write(f"### {product['name']}")
         st.write(f"*{description}*")
