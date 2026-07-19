@@ -87,6 +87,8 @@ class ModelLoader:
             self.sequence_length = self.config.CNN_LSTM_SEQUENCE_LENGTH
         elif self.model_name == "CNN-GRU":
             self.sequence_length = self.config.CNN_GRU_WINDOW_SIZE
+        elif self.model_name == "TFT":
+            self.sequence_length = self.config.TFT_WINDOW_SIZE
         
         self.logger.info(f"Modelo: {self.model_name}")
         self.logger.info(f"Archivo: {self.model_path}")
@@ -99,7 +101,16 @@ class ModelLoader:
             raise FileNotFoundError(f"El modelo seleccionado no fue encontrado: {self.model_path}")
         
         try:
-            self.model = tf.keras.models.load_model(self.model_path)
+            custom_objects = None
+            if self.model_name == "TFT":
+                from ia.training.tft import get_tft_custom_objects
+
+                custom_objects = get_tft_custom_objects()
+            self.model = tf.keras.models.load_model(
+                self.model_path,
+                custom_objects=custom_objects,
+                compile=False,
+            )
             self.is_loaded = True
             self.logger.info("Modelo cargado correctamente.")
         except Exception as e:

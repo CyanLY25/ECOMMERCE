@@ -63,7 +63,7 @@ class HyperparameterTuner:
             )
             self.logger.error(error_msg)
             print(error_msg)
-            sys.exit(1)
+            raise RuntimeError(error_msg)
     
     def _build_mlp_model(self, hp):
         """
@@ -214,6 +214,98 @@ class HyperparameterTuner:
         
         return model
     
+    def _build_tft_model(self, hp):
+        """
+        Construye una versión simplificada del modelo TFT con hiperparámetros
+        variables, reutilizando los mismos bloques (VSN + LSTM + atención +
+        GRN) que la arquitectura completa en ia/training/tft.py, pero con
+        hiperparámetros de tamaño oculto, número de cabezas y dropout
+        explorables por keras_tuner.
+        """
+        from ia.training.tft import (
+            tft_slice_feature,
+            tft_stack_variables,
+            tft_expand_last_dim,
+            tft_sum_variables,
+            tft_last_timestep
+        )
+
+        hidden_size = hp.Choice('hidden_size', values=self.config.TUNING_TFT_HIDDEN_SIZE)
+        num_heads = hp.Choice('num_heads', values=self.config.TUNING_TFT_NUM_HEADS)
+        dropout = hp.Choice('dropout', values=self.config.TUNING_DROPOUT)
+        learning_rate = hp.Choice('learning_rate', values=self.config.TUNING_LR)
+
+        def glu(x, units, name):
+            linear = tf.keras.layers.Dense(units, name=f"{name}_glu_linear")(x)
+            gate = tf.keras.layers.Dense(units, activation='sigmoid', name=f"{name}_glu_gate")(x)
+            return tf.keras.layers.Multiply(name=f"{name}_glu_mul")([linear, gate])
+
+        def grn(x, units, name, output_size=None):
+            if output_size is None:
+                output_size = x.shape[-1]
+            residual = x if x.shape[-1] == output_size else tf.keras.layers.Dense(
+                output_size, name=f"{name}_residual_proj")(x)
+            hidden = tf.keras.layers.Dense(units, name=f"{name}_dense1")(x)
+            hidden = tf.keras.layers.Activation('elu', name=f"{name}_elu")(hidden)
+            hidden = tf.keras.layers.Dense(units, name=f"{name}_dense2")(hidden)
+            hidden = tf.keras.layers.Dropout(dropout, name=f"{name}_dropout")(hidden)
+            gated = glu(hidden, output_size, name=name)
+            out = tf.keras.layers.Add(name=f"{name}_add")([residual, gated])
+            return tf.keras.layers.LayerNormalization(name=f"{name}_norm")(out)
+
+        inputs = tf.keras.Input(shape=(self.window_size, self.input_dim))
+
+        transformed = []
+        for i in range(self.input_dim):
+            feature_i = tf.keras.layers.Lambda(
+                tft_slice_feature, arguments={"idx": i}, name=f"vsn_slice_{i}"
+            )(inputs)
+            proj_i = tf.keras.layers.Dense(hidden_size, name=f"vsn_proj_{i}")(feature_i)
+            transformed.append(grn(proj_i, hidden_size, name=f"vsn_grn_{i}"))
+
+        stacked = tf.keras.layers.Lambda(tft_stack_variables, name="vsn_stack")(transformed)
+        flat_concat = tf.keras.layers.Concatenate(axis=-1, name="vsn_concat")(transformed)
+        selection_logits = grn(flat_concat, hidden_size, name="vsn_selection", output_size=self.input_dim)
+        selection_weights = tf.keras.layers.Softmax(axis=-1, name="vsn_softmax")(selection_logits)
+        selection_weights = tf.keras.layers.Lambda(
+            tft_expand_last_dim, name="vsn_weights_expand"
+        )(selection_weights)
+        weighted = tf.keras.layers.Multiply(name="vsn_weighted")([stacked, selection_weights])
+        selected = tf.keras.layers.Lambda(tft_sum_variables, name="vsn_sum")(weighted)
+
+        lstm_out = tf.keras.layers.LSTM(hidden_size, return_sequences=True, name="tft_lstm_encoder")(selected)
+        gated_lstm = glu(lstm_out, hidden_size, name="tft_lstm_gate")
+        temporal_features = tf.keras.layers.LayerNormalization(name="tft_lstm_norm")(
+            tf.keras.layers.Add(name="tft_lstm_add")([selected, gated_lstm])
+        )
+
+        attn_out = tf.keras.layers.MultiHeadAttention(
+            num_heads=num_heads, key_dim=max(hidden_size // num_heads, 1),
+            dropout=dropout, name="tft_attention"
+        )(temporal_features, temporal_features)
+        gated_attn = glu(attn_out, hidden_size, name="tft_attn_gate")
+        attn_features = tf.keras.layers.LayerNormalization(name="tft_attn_norm")(
+            tf.keras.layers.Add(name="tft_attn_add")([temporal_features, gated_attn])
+        )
+
+        ff = grn(attn_features, hidden_size, name="tft_position_ff")
+        gated_ff = glu(ff, hidden_size, name="tft_ff_gate")
+        decoder_out = tf.keras.layers.LayerNormalization(name="tft_ff_norm")(
+            tf.keras.layers.Add(name="tft_ff_add")([attn_features, gated_ff])
+        )
+
+        last_step = tf.keras.layers.Lambda(tft_last_timestep, name="tft_last_step")(decoder_out)
+        outputs = tf.keras.layers.Dense(1, name="tft_output")(last_step)
+
+        model = Model(inputs=inputs, outputs=outputs)
+        model.compile(
+            optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
+            loss='mse',
+            metrics=['mae']
+        )
+
+        return model
+
     def _get_model_builder(self, model_name: str):
         """
         Obtiene la función de construcción del modelo.
@@ -223,7 +315,8 @@ class HyperparameterTuner:
             'lstm': self._build_lstm_model,
             'gru': self._build_gru_model,
             'cnn_lstm': self._build_cnn_lstm_model,
-            'cnn_gru': self._build_cnn_gru_model
+            'cnn_gru': self._build_cnn_gru_model,
+            'tft': self._build_tft_model
         }
         
         if model_name not in builders:
@@ -262,6 +355,7 @@ class HyperparameterTuner:
             self.config.LSTM_SEQUENCE_LENGTH if model_name == 'lstm'
             else self.config.GRU_SEQUENCE_LENGTH if model_name == 'gru'
             else self.config.CNN_LSTM_SEQUENCE_LENGTH if model_name == 'cnn_lstm'
+            else self.config.TFT_WINDOW_SIZE if model_name == 'tft'
             else 10
         )
         

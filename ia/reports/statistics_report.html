@@ -14,7 +14,7 @@
 </head>
 <body>
 <h1>Reporte de Validación Estadística</h1>
-<p>Fecha de generación: 2026-07-16 14:38:28</p>
+<p>Fecha de generación: 2026-07-19 11:58:14</p>
 <h2>Resumen Ejecutivo</h2>
 <ul>
 <li><strong>Métrica evaluada</strong>: rmse</li>
@@ -25,34 +25,35 @@
 <h2>1. Prueba de Friedman</h2>
 <h3>Resultados</h3>
 <ul>
-<li><strong>Estadístico χ²</strong>: 12.3200</li>
-<li><strong>Valor p</strong>: 0.015124</li>
+<li><strong>Estadístico χ²</strong>: 12.6571</li>
+<li><strong>Valor p</strong>: 0.026813</li>
 <li><strong>α</strong>: 0.05</li>
 </ul>
 <h3>Conclusión</h3>
-<p>Se rechaza la hipótesis nula (p = 0.015124 &lt; α = 0.05). Existen diferencias estadísticamente significativas entre al menos dos modelos.</p>
+<p>Se rechaza la hipótesis nula (p = 0.026813 &lt; α = 0.05). Existen diferencias estadísticamente significativas entre al menos dos modelos.</p>
 <h3>Ranking Promedio</h3>
 <ol>
 <li>mlp: 1.000</li>
-<li>lstm: 2.600</li>
-<li>cnn_lstm: 3.600</li>
-<li>cnn_gru: 3.800</li>
-<li>gru: 4.000</li>
+<li>lstm: 3.000</li>
+<li>cnn_lstm: 4.000</li>
+<li>cnn_gru: 4.200</li>
+<li>gru: 4.400</li>
+<li>tft: 4.400</li>
 </ol>
 <hr />
 <h2>2. Test Post-Hoc de Nemenyi</h2>
 <ul>
-<li><strong>Diferencia Crítica (CD)</strong>: 2.728</li>
+<li><strong>Diferencia Crítica (CD)</strong>: 3.372</li>
 </ul>
 <h3>Comparaciones Significativas</h3>
 <ul>
-<li>cnn_gru vs mlp</li>
 <li>gru vs mlp</li>
+<li>mlp vs tft</li>
 </ul>
 <hr />
 <h2>3. Test de Wilcoxon con Corrección de Bonferroni</h2>
 <ul>
-<li><strong>Número de comparaciones</strong>: 10</li>
+<li><strong>Número de comparaciones</strong>: 15</li>
 </ul>
 <h3>Resultados</h3>
 <table>
@@ -135,9 +136,25 @@
 <td style="text-align: right;">71.8927</td>
 <td style="text-align: right;">59.4074</td>
 <td style="text-align: right;">12.4853</td>
-<td style="text-align: right;">0.625</td>
+<td style="text-align: right;">0.9375</td>
 <td style="text-align: left;">False</td>
 <td style="text-align: left;">No hay diferencias estadísticamente significativas entre cnn_gru y mlp</td>
+</tr>
+<tr>
+<td style="text-align: left;">cnn_gru</td>
+<td style="text-align: left;">tft</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">0.625</td>
+<td style="text-align: right;">-0.275571</td>
+<td style="text-align: left;">Pequeño</td>
+<td style="text-align: right;">-0.04</td>
+<td style="text-align: left;">Despreciable</td>
+<td style="text-align: right;">71.8927</td>
+<td style="text-align: right;">74.9228</td>
+<td style="text-align: right;">-3.03006</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: left;">No hay diferencias estadísticamente significativas entre cnn_gru y tft</td>
 </tr>
 <tr>
 <td style="text-align: left;">cnn_lstm</td>
@@ -167,7 +184,7 @@
 <td style="text-align: right;">71.6612</td>
 <td style="text-align: right;">71.5803</td>
 <td style="text-align: right;">0.0808844</td>
-<td style="text-align: right;">0.625</td>
+<td style="text-align: right;">0.9375</td>
 <td style="text-align: left;">False</td>
 <td style="text-align: left;">No hay diferencias estadísticamente significativas entre cnn_lstm y lstm</td>
 </tr>
@@ -183,9 +200,25 @@
 <td style="text-align: right;">71.6612</td>
 <td style="text-align: right;">59.4074</td>
 <td style="text-align: right;">12.2538</td>
-<td style="text-align: right;">0.625</td>
+<td style="text-align: right;">0.9375</td>
 <td style="text-align: left;">False</td>
 <td style="text-align: left;">No hay diferencias estadísticamente significativas entre cnn_lstm y mlp</td>
+</tr>
+<tr>
+<td style="text-align: left;">cnn_lstm</td>
+<td style="text-align: left;">tft</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">0.625</td>
+<td style="text-align: right;">-0.293394</td>
+<td style="text-align: left;">Pequeño</td>
+<td style="text-align: right;">-0.04</td>
+<td style="text-align: left;">Despreciable</td>
+<td style="text-align: right;">71.6612</td>
+<td style="text-align: right;">74.9228</td>
+<td style="text-align: right;">-3.26155</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: left;">No hay diferencias estadísticamente significativas entre cnn_lstm y tft</td>
 </tr>
 <tr>
 <td style="text-align: left;">gru</td>
@@ -215,9 +248,25 @@
 <td style="text-align: right;">71.817</td>
 <td style="text-align: right;">59.4074</td>
 <td style="text-align: right;">12.4095</td>
-<td style="text-align: right;">0.625</td>
+<td style="text-align: right;">0.9375</td>
 <td style="text-align: left;">False</td>
 <td style="text-align: left;">No hay diferencias estadísticamente significativas entre gru y mlp</td>
+</tr>
+<tr>
+<td style="text-align: left;">gru</td>
+<td style="text-align: left;">tft</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">0.625</td>
+<td style="text-align: right;">-0.284134</td>
+<td style="text-align: left;">Pequeño</td>
+<td style="text-align: right;">-0.04</td>
+<td style="text-align: left;">Despreciable</td>
+<td style="text-align: right;">71.817</td>
+<td style="text-align: right;">74.9228</td>
+<td style="text-align: right;">-3.10582</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: left;">No hay diferencias estadísticamente significativas entre gru y tft</td>
 </tr>
 <tr>
 <td style="text-align: left;">lstm</td>
@@ -231,9 +280,41 @@
 <td style="text-align: right;">71.5803</td>
 <td style="text-align: right;">59.4074</td>
 <td style="text-align: right;">12.1729</td>
-<td style="text-align: right;">0.625</td>
+<td style="text-align: right;">0.9375</td>
 <td style="text-align: left;">False</td>
 <td style="text-align: left;">No hay diferencias estadísticamente significativas entre lstm y mlp</td>
+</tr>
+<tr>
+<td style="text-align: left;">lstm</td>
+<td style="text-align: left;">tft</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">0.625</td>
+<td style="text-align: right;">-0.300192</td>
+<td style="text-align: left;">Pequeño</td>
+<td style="text-align: right;">-0.04</td>
+<td style="text-align: left;">Despreciable</td>
+<td style="text-align: right;">71.5803</td>
+<td style="text-align: right;">74.9228</td>
+<td style="text-align: right;">-3.34243</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: left;">No hay diferencias estadísticamente significativas entre lstm y tft</td>
+</tr>
+<tr>
+<td style="text-align: left;">mlp</td>
+<td style="text-align: left;">tft</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0.0625</td>
+<td style="text-align: right;">-1.57393</td>
+<td style="text-align: left;">Grande</td>
+<td style="text-align: right;">-0.2</td>
+<td style="text-align: left;">Pequeño</td>
+<td style="text-align: right;">59.4074</td>
+<td style="text-align: right;">74.9228</td>
+<td style="text-align: right;">-15.5153</td>
+<td style="text-align: right;">0.9375</td>
+<td style="text-align: left;">False</td>
+<td style="text-align: left;">No hay diferencias estadísticamente significativas entre mlp y tft</td>
 </tr>
 </tbody>
 </table>
@@ -291,6 +372,14 @@
 <td style="text-align: right;">83.6875</td>
 <td style="text-align: right;">5</td>
 </tr>
+<tr>
+<td style="text-align: left;">tft</td>
+<td style="text-align: right;">74.9228</td>
+<td style="text-align: right;">11.6086</td>
+<td style="text-align: right;">60.5088</td>
+<td style="text-align: right;">89.3368</td>
+<td style="text-align: right;">5</td>
+</tr>
 </tbody>
 </table>
 <hr />
@@ -328,6 +417,11 @@
 <td style="text-align: left;">cnn_gru</td>
 <td style="text-align: right;">71.8927</td>
 <td style="text-align: right;">5</td>
+</tr>
+<tr>
+<td style="text-align: left;">tft</td>
+<td style="text-align: right;">74.9228</td>
+<td style="text-align: right;">6</td>
 </tr>
 </tbody>
 </table>

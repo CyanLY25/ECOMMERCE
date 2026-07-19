@@ -1,8 +1,11 @@
 """
 Script principal para ejecutar Hyperparameter Tuning en todos los modelos.
 """
+import argparse
+import json
 import sys
 from pathlib import Path
+import pandas as pd
 
 # Añadir el directorio raíz del proyecto al path
 project_root = Path(__file__).parent.parent.parent
@@ -18,7 +21,10 @@ from ia.tuning.hyperparameter_tuner import HyperparameterTuner
 from ia.utils.logger import setup_logger
 
 
-def run_all_models_tuning():
+SUPPORTED_MODELS = ['mlp', 'lstm', 'gru', 'cnn_lstm', 'cnn_gru', 'tft']
+
+
+def run_all_models_tuning(model_names=None):
     """
     Ejecuta Hyperparameter Tuning para todos los modelos del proyecto.
     """
@@ -45,7 +51,24 @@ def run_all_models_tuning():
         tuner = HyperparameterTuner(config)
         
         # Lista de modelos
-        models = ['mlp', 'lstm', 'gru', 'cnn_lstm', 'cnn_gru']
+        models = list(model_names) if model_names else list(SUPPORTED_MODELS)
+        invalid_models = sorted(set(models) - set(SUPPORTED_MODELS))
+        if invalid_models:
+            raise ValueError(f"Modelos no reconocidos: {invalid_models}")
+
+        # Una ejecución parcial conserva los mejores resultados y trials de
+        # los modelos que ya fueron ajustados anteriormente.
+        if set(models) != set(SUPPORTED_MODELS):
+            if config.TUNING_RESULTS_JSON_PATH.exists():
+                with open(config.TUNING_RESULTS_JSON_PATH, "r", encoding="utf-8") as file:
+                    tuner.all_results.update(json.load(file))
+            if config.TUNING_RESULTS_CSV_PATH.exists():
+                previous_trials = pd.read_csv(config.TUNING_RESULTS_CSV_PATH)
+                previous_trials = previous_trials[
+                    ~previous_trials["model"].str.lower().isin(models)
+                ]
+                tuner.trials_data.extend(previous_trials.to_dict(orient="records"))
+        failures = {}
         
         # Preparar datos para cada tipo de modelo
         for model_name in models:
@@ -61,6 +84,7 @@ def run_all_models_tuning():
                     config.LSTM_SEQUENCE_LENGTH if model_name == 'lstm'
                     else config.GRU_SEQUENCE_LENGTH if model_name == 'gru'
                     else config.CNN_LSTM_SEQUENCE_LENGTH if model_name == 'cnn_lstm'
+                    else config.TFT_WINDOW_SIZE if model_name == 'tft'
                     else config.CNN_GRU_WINDOW_SIZE
                 )
                 X_t, y_t = create_sequences(X_train, y_train, window_size)
@@ -73,7 +97,11 @@ def run_all_models_tuning():
                 logger.error(f"Error en tuning de {model_name}: {str(e)}")
                 import traceback
                 logger.error(traceback.format_exc())
-                continue
+                failures[model_name] = str(e)
+
+        if failures:
+            details = "; ".join(f"{model}: {error}" for model, error in failures.items())
+            raise RuntimeError(f"El tuning quedó incompleto: {details}")
         
         # Guardar y visualizar resultados
         tuner.save_results()
@@ -111,8 +139,11 @@ def run_all_models_tuning():
         logger.error(f"ERROR GENERAL: {str(e)}")
         import traceback
         logger.error(traceback.format_exc())
-        sys.exit(1)
+        raise RuntimeError(f"Falló el hyperparameter tuning: {e}") from e
 
 
 if __name__ == "__main__":
-    run_all_models_tuning()
+    parser = argparse.ArgumentParser(description="Ajuste de hiperparámetros por modelo")
+    parser.add_argument("--models", nargs="+", choices=SUPPORTED_MODELS)
+    cli_args = parser.parse_args()
+    run_all_models_tuning(cli_args.models)

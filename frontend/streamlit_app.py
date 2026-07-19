@@ -218,7 +218,7 @@ try:
             st.image(f"{API_URL}/api/reports/figure/time_series_sales", caption="Serie temporal de ventas", use_container_width=True)
 
     with tab_models:
-        st.subheader("Comparación entre los 5 modelos entrenados (MLP, LSTM, GRU, CNN-LSTM, CNN-GRU)")
+        st.subheader("Comparación entre los 6 modelos entrenados (MLP, LSTM, GRU, CNN-LSTM, CNN-GRU, TFT)")
         cmp = summary.get("model_comparison", {})
         if cmp.get("table"):
             st.dataframe(cmp["table"], use_container_width=True)

@@ -201,7 +201,7 @@ class ReportGenerator:
         # ---------- 2. Entrenamiento y comparación de modelos ----------
         story.append(Paragraph("2. Entrenamiento y Comparación de Modelos", styles["H1c"]))
         story.append(Paragraph(
-            "Se entrenaron tres modelos clásicos (MLP, LSTM, GRU) y dos modelos híbridos "
+            "Se entrenaron cuatro modelos clásicos (MLP, LSTM, GRU, TFT) y dos modelos híbridos "
             "(CNN-LSTM, CNN-GRU), guardando el mejor modelo en formato .keras para su consumo "
             "directo desde el backend sin necesidad de reentrenamiento.", styles["Normal"]
         ))
@@ -538,7 +538,7 @@ class ReportGenerator:
         # ---------- 2. Comparación de modelos ----------
         add_heading("2. Entrenamiento y Comparación de Modelos", 1)
         doc.add_paragraph(
-            "Se entrenaron tres modelos clásicos (MLP, LSTM, GRU) y dos modelos híbridos "
+            "Se entrenaron cuatro modelos clásicos (MLP, LSTM, GRU, TFT) y dos modelos híbridos "
             "(CNN-LSTM, CNN-GRU), guardando el mejor modelo en formato .keras para su consumo "
             "directo desde el backend sin necesidad de reentrenamiento."
         )

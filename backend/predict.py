@@ -18,12 +18,7 @@ from ia.config.config import AIConfig
 # Orden exacto de características según el preprocesamiento de entrenamiento
 # (producto-día agregado, con historial de demanda). Debe coincidir con las
 # columnas de ia/dataset/processed/train.csv (sin la columna 'Quantity').
-FEATURE_ORDER = [
-    "StockCode", "UnitPrice", "Country", "NumTransacciones",
-    "lag_1", "lag_7", "lag_14", "lag_30",
-    "rolling_mean_7", "rolling_std_7", "rolling_mean_30",
-    "Mes", "Día", "DíaSemana", "SemanaAño", "Trimestre", "EsFinDeSemana", "MesNombre",
-]
+FEATURE_ORDER = list(AIConfig.MODEL_FEATURES)
 
 # Features que se toman del snapshot de historial del producto (ya vienen
 # escaladas/codificadas desde el despliegue, no requieren transformación).
@@ -155,8 +150,8 @@ def make_prediction(request: PredictionRequest) -> PredictionResponse:
         )
         
         # Paso 1: Obtener el historial de demanda más reciente del producto
-        history = _PRODUCT_HISTORY.get(stock_code)
-        if history is None:
+        history_entry = _PRODUCT_HISTORY.get(stock_code)
+        if history_entry is None:
             raise ValueError(
                 f"No hay historial de ventas para el producto '{stock_code}'. "
                 "Solo se pueden predecir productos presentes en el histórico de entrenamiento."
@@ -173,33 +168,63 @@ def make_prediction(request: PredictionRequest) -> PredictionResponse:
             "EsFinDeSemana": int(target_date.weekday() >= 5),
         }
         
-        # Paso 3: Armar el vector de entrada en el orden exacto del entrenamiento
-        processed_features = []
-        for feature_name in FEATURE_ORDER:
-            if feature_name == "StockCode":
-                processed_features.append(float(model_loader.encode_feature("StockCode", stock_code)))
-            elif feature_name == "MesNombre":
-                processed_features.append(float(model_loader.encode_feature("MesNombre", mes_nombre_es)))
-            elif feature_name in date_features:
-                processed_features.append(float(date_features[feature_name]))
-            elif feature_name in HISTORY_FEATURES:
-                processed_features.append(float(history[feature_name]))
-            else:
-                raise ValueError(f"No se supo cómo calcular la característica '{feature_name}'")
-        
-        # Convertir a array numpy
-        features_np = np.array(processed_features, dtype=np.float32)
-        
-        # Paso 4: Preparar secuencia si es un modelo recurrente
-        is_sequential = model_loader.model_name in ["LSTM", "GRU", "CNN-LSTM", "CNN-GRU"]
+        # Paso 3: Preparar la entrada con la misma semántica del entrenamiento.
+        is_sequential = model_loader.model_name in ["LSTM", "GRU", "CNN-LSTM", "CNN-GRU", "TFT"]
         if is_sequential:
             sequence_length = model_loader.sequence_length
-            sequence = np.tile(features_np, (sequence_length, 1))
-            input_data = sequence.reshape(1, sequence_length, len(FEATURE_ORDER))
+            sequence_rows = (
+                history_entry.get("sequence")
+                if isinstance(history_entry, dict)
+                else None
+            )
+            if not sequence_rows or len(sequence_rows) < sequence_length:
+                raise ValueError(
+                    f"El producto '{stock_code}' no tiene las {sequence_length} observaciones "
+                    "históricas reales requeridas. Vuelva a ejecutar el despliegue para "
+                    "regenerar product_history.json."
+                )
+
+            sequence = []
+            for row in sequence_rows[-sequence_length:]:
+                missing = [feature for feature in FEATURE_ORDER if feature not in row]
+                if missing:
+                    raise ValueError(
+                        f"La secuencia histórica de '{stock_code}' no contiene {missing}"
+                    )
+                sequence.append([float(row[feature]) for feature in FEATURE_ORDER])
+            input_data = np.asarray([sequence], dtype=np.float32)
         else:
+            # Los modelos no secuenciales sí reciben una fila correspondiente
+            # a la fecha solicitada, combinada con el último estado conocido.
+            latest_history = (
+                history_entry.get("latest", history_entry)
+                if isinstance(history_entry, dict)
+                else history_entry
+            )
+            processed_features = []
+            for feature_name in FEATURE_ORDER:
+                if feature_name == "StockCode":
+                    processed_features.append(float(model_loader.encode_feature("StockCode", stock_code)))
+                elif feature_name == "MesNombre":
+                    processed_features.append(float(model_loader.encode_feature("MesNombre", mes_nombre_es)))
+                elif feature_name in date_features:
+                    processed_features.append(float(date_features[feature_name]))
+                elif feature_name in HISTORY_FEATURES:
+                    processed_features.append(float(latest_history[feature_name]))
+                else:
+                    raise ValueError(f"No se supo cómo calcular la característica '{feature_name}'")
+            features_np = np.array(processed_features, dtype=np.float32)
             input_data = features_np.reshape(1, -1)
+
+        expected_shape = tuple(model_loader.model.input_shape[1:])
+        received_shape = tuple(input_data.shape[1:])
+        if expected_shape != received_shape:
+            raise ValueError(
+                f"Forma de entrada incompatible con {model_loader.model_name}: "
+                f"esperada {expected_shape}, recibida {received_shape}"
+            )
         
-        # Paso 5: Realizar la predicción
+        # Paso 4: Realizar la predicción
         prediction = model_loader.predict(input_data)
         
         # Calcular tiempo de procesamiento en milisegundos

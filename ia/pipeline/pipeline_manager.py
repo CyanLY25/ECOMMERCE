@@ -79,36 +79,55 @@ class PipelineManager:
         """
         Ejecuta la fase de entrenamiento de todos los modelos.
         """
-        # Ejecutar entrenamiento para cada modelo
+        # Ejecutar entrenamiento para cada modelo. Los fallos se recopilan
+        # para terminar los demás entrenamientos, pero la fase no se marca
+        # como completada si alguno falló.
+        failures = []
         try:
             from ia.training.mlp_trainer import main as train_mlp
             train_mlp()
         except Exception as e:
             self.logger.warning(f"MLP training failed: {e}")
+            failures.append(("MLP", e))
         
         try:
             from ia.training.lstm_trainer import main as train_lstm
             train_lstm()
         except Exception as e:
             self.logger.warning(f"LSTM training failed: {e}")
+            failures.append(("LSTM", e))
         
         try:
             from ia.training.gru_trainer import main as train_gru
             train_gru()
         except Exception as e:
             self.logger.warning(f"GRU training failed: {e}")
+            failures.append(("GRU", e))
         
         try:
             from ia.training.cnn_lstm_trainer import main as train_cnn_lstm
             train_cnn_lstm()
         except Exception as e:
             self.logger.warning(f"CNN-LSTM training failed: {e}")
+            failures.append(("CNN-LSTM", e))
         
         try:
             from ia.training.cnn_gru_trainer import main as train_cnn_gru
             train_cnn_gru()
         except Exception as e:
             self.logger.warning(f"CNN-GRU training failed: {e}")
+            failures.append(("CNN-GRU", e))
+
+        try:
+            from ia.training.tft_trainer import main as train_tft
+            train_tft([])
+        except Exception as e:
+            self.logger.warning(f"TFT training failed: {e}")
+            failures.append(("TFT", e))
+
+        if failures:
+            details = "; ".join(f"{name}: {error}" for name, error in failures)
+            raise RuntimeError(f"Fallaron uno o más entrenamientos: {details}")
             
     def _run_model_comparison(self):
         """
@@ -163,6 +182,7 @@ class PipelineManager:
         self.config.ensure_directories_exist()
         
         # Ejecutar cada fase del pipeline
+        pipeline_error = None
         for phase_idx, phase in enumerate(self.phases, 1):
             phase_name = phase["name"]
             phase_flag = phase["flag"]
@@ -204,6 +224,13 @@ class PipelineManager:
                 print(f"Fallido: {error}")
                 
             print("=" * 80)
+
+            if not success:
+                pipeline_error = RuntimeError(f"La fase {phase_name} falló: {error}")
+                self.logger.error(
+                    "Pipeline detenido para evitar ejecutar fases dependientes con artefactos incompletos"
+                )
+                break
             
         # Finalizar el summary
         # Obtener el mejor modelo
@@ -234,7 +261,7 @@ class PipelineManager:
         
         # Imprimir resumen final
         print("\n" + "=" * 80)
-        print("PROYECTO COMPLETADO")
+        print("PROYECTO COMPLETADO" if pipeline_error is None else "PROYECTO INCOMPLETO")
         print("=" * 80)
         
         if best_model:
@@ -272,3 +299,6 @@ class PipelineManager:
         self.logger.info("PIPELINE MAESTRO FINALIZADO")
         self.logger.info(f"Tiempo total: {total_duration}")
         self.logger.info("=" * 80)
+
+        if pipeline_error is not None:
+            raise pipeline_error

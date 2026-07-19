@@ -62,10 +62,10 @@ class ModelDeployer:
     
     def _build_product_history_snapshot(self):
         """
-        Genera un snapshot con el último estado conocido (lags, rolling
-        stats, precio, país) de cada producto, para que el backend pueda
-        predecir a partir de solo StockCode + fecha, sin tener que
-        recalcular el historial completo de ventas en cada request.
+        Genera el último estado y una secuencia histórica real por producto.
+        Los modelos secuenciales (incluido TFT) fueron entrenados con ventanas
+        de observaciones reales, por lo que no se debe repetir una sola fila
+        durante la inferencia.
         """
         self.logger.info("Generando snapshot de historial por producto...")
 
@@ -83,23 +83,37 @@ class ModelDeployer:
         with open(stockcode_encoder_path, "rb") as f:
             stockcode_encoder = pickle.load(f)
 
-        feature_cols = [
-            "UnitPrice", "Country", "NumTransacciones",
-            "lag_1", "lag_7", "lag_14", "lag_30",
-            "rolling_mean_7", "rolling_std_7", "rolling_mean_30",
-        ]
-        feature_cols = [c for c in feature_cols if c in full.columns]
+        feature_cols = list(self.config.MODEL_FEATURES)
+        missing_features = [column for column in feature_cols if column not in full.columns]
+        if missing_features:
+            raise ValueError(
+                f"No se puede generar historial: faltan características {missing_features}"
+            )
 
-        # Última fila conocida de cada producto (más reciente)
-        latest = full.groupby("StockCode", sort=False).tail(1)
+        max_sequence_length = max(
+            self.config.LSTM_SEQUENCE_LENGTH,
+            self.config.GRU_SEQUENCE_LENGTH,
+            self.config.CNN_LSTM_SEQUENCE_LENGTH,
+            self.config.CNN_GRU_WINDOW_SIZE,
+            self.config.TFT_WINDOW_SIZE,
+        )
 
         snapshot = {}
-        for _, row in latest.iterrows():
+        for encoded_stock_code, product_rows in full.groupby("StockCode", sort=False):
             try:
-                raw_code = str(stockcode_encoder.inverse_transform([int(row["StockCode"])])[0])
+                raw_code = str(stockcode_encoder.inverse_transform([int(encoded_stock_code)])[0])
             except Exception:
                 continue
-            snapshot[raw_code] = {col: float(row[col]) for col in feature_cols}
+
+            recent_rows = product_rows.tail(max_sequence_length)
+            latest_row = recent_rows.iloc[-1]
+            snapshot[raw_code] = {
+                "latest": {column: float(latest_row[column]) for column in feature_cols},
+                "sequence": [
+                    {column: float(row[column]) for column in feature_cols}
+                    for _, row in recent_rows.iterrows()
+                ],
+            }
 
         snapshot_path = self.backend_model_dir / "product_history.json"
         with open(snapshot_path, "w", encoding="utf-8") as f:
@@ -160,7 +174,16 @@ class ModelDeployer:
                 "r2": model_info.get("r2")
             },
             "path": str(model_dest_path.absolute()),
-            "version": "1.0"
+            "version": "1.1",
+            "feature_order": list(self.config.MODEL_FEATURES),
+            "sequence_length": (
+                self.config.TFT_WINDOW_SIZE if model_name == "TFT"
+                else self.config.LSTM_SEQUENCE_LENGTH if model_name == "LSTM"
+                else self.config.GRU_SEQUENCE_LENGTH if model_name == "GRU"
+                else self.config.CNN_LSTM_SEQUENCE_LENGTH if model_name == "CNN-LSTM"
+                else self.config.CNN_GRU_WINDOW_SIZE if model_name == "CNN-GRU"
+                else None
+            ),
         }
         
         model_info_path = self.backend_model_dir / "model_info.json"

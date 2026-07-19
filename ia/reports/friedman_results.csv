@@ -1,2 +1,2 @@
 test,statistic,p_value,alpha,significant,conclusion
-Friedman,12.320000000000007,0.015123733425606184,0.05,True,Se rechaza la hipótesis nula (p = 0.015124 < α = 0.05). Existen diferencias estadísticamente significativas entre al menos dos modelos.
+Friedman,12.657142857142858,0.026812554418174456,0.05,True,Se rechaza la hipótesis nula (p = 0.026813 < α = 0.05). Existen diferencias estadísticamente significativas entre al menos dos modelos.

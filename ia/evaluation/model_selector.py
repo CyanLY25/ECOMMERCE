@@ -51,13 +51,14 @@ def main():
     logger.info("=" * 80)
     
     # Lista de modelos a evaluar
-    model_names = ["MLP", "LSTM", "GRU", "CNN-LSTM", "CNN-GRU"]
+    model_names = ["MLP", "LSTM", "GRU", "CNN-LSTM", "CNN-GRU", "TFT"]
     model_paths = {
         "MLP": config.MLP_MODEL_PATH,
         "LSTM": config.LSTM_MODEL_PATH,
         "GRU": config.GRU_MODEL_PATH,
         "CNN-LSTM": config.CNN_LSTM_MODEL_PATH,
-        "CNN-GRU": config.CNN_GRU_MODEL_PATH
+        "CNN-GRU": config.CNN_GRU_MODEL_PATH,
+        "TFT": config.TFT_MODEL_PATH
     }
     
     # Cargar métricas de cada modelo

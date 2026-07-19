@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 from typing import Dict, Any, List, Tuple, Callable
-from sklearn.model_selection import KFold
+from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import tensorflow as tf
 from tensorflow.keras.models import clone_model
@@ -28,7 +28,7 @@ plt.rcParams["figure.dpi"] = 100
 
 class CrossValidator:
     """
-    Clase genérica para ejecutar validación cruzada K-Fold en modelos de TensorFlow/Keras.
+    Clase genérica para ejecutar validación temporal en modelos de TensorFlow/Keras.
     Diseñada para ser reutilizada por cualquier modelo compatible y para Hyperparameter Tuning.
     """
     
@@ -58,13 +58,15 @@ class CrossValidator:
         from ia.training.gru import GRUModel
         from ia.training.cnn_lstm import CNNLSTMModel
         from ia.training.cnn_gru import CNNGRUModel
+        from ia.training.tft import TFTModel
         
         model_classes = {
             "mlp": MLPModel,
             "lstm": LSTMModel,
             "gru": GRUModel,
             "cnn_lstm": CNNLSTMModel,
-            "cnn_gru": CNNGRUModel
+            "cnn_gru": CNNGRUModel,
+            "tft": TFTModel
         }
         
         if model_name not in model_classes:
@@ -87,7 +89,7 @@ class CrossValidator:
         """
         from ia.training.common import create_sequences
         
-        if model_name in ["lstm", "gru", "cnn_lstm", "cnn_gru"]:
+        if model_name in ["lstm", "gru", "cnn_lstm", "cnn_gru", "tft"]:
             window_size = getattr(self.config, f"{model_name.upper().replace('_', '')}_WINDOW_SIZE", 
                                   getattr(self.config, f"{model_name.upper()}_SEQUENCE_LENGTH", 10))
             X_seq, y_seq = create_sequences(X, y, window_size)
@@ -152,7 +154,7 @@ class CrossValidator:
         model_instance = ModelClass(self.config)
         
         # Preparar datos para modelos secuenciales
-        if model_name in ["lstm", "gru", "cnn_lstm", "cnn_gru"]:
+        if model_name in ["lstm", "gru", "cnn_lstm", "cnn_gru", "tft"]:
             X_train_prep, y_train_prep, _ = self._prepare_data(model_name, X_train, y_train)
             X_val_prep, y_val_prep, _ = self._prepare_data(model_name, X_val, y_val)
             
@@ -219,16 +221,14 @@ class CrossValidator:
         print(f"Modelo: {model_name.upper()}")
         print("=" * 80)
         
-        # Configurar K-Fold
-        kf = KFold(
-            n_splits=self.config.CV_FOLDS,
-            shuffle=self.config.CV_SHUFFLE,
-            random_state=self.config.RANDOM_SEED
-        )
+        # Los CSV están ordenados cronológicamente. TimeSeriesSplit garantiza
+        # que cada validación sea posterior a sus datos de entrenamiento y
+        # evita filtrar observaciones futuras hacia TFT.
+        splitter = TimeSeriesSplit(n_splits=self.config.CV_FOLDS)
         
         fold_results = []
         
-        for fold_idx, (train_idx, val_idx) in enumerate(kf.split(X, y)):
+        for fold_idx, (train_idx, val_idx) in enumerate(splitter.split(X, y)):
             self.logger.info(f"Fold {fold_idx + 1}/{self.config.CV_FOLDS}")
             print(f"\nFold {fold_idx + 1}/{self.config.CV_FOLDS}")
             

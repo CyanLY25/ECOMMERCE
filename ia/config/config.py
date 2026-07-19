@@ -100,7 +100,15 @@ class AIConfig:
     CNN_GRU_BATCH_SIZE = 32
     CNN_GRU_EPOCHS = 100
     CNN_GRU_LEARNING_RATE = 0.001
-    
+    # TFT (Temporal Fusion Transformer)
+    TFT_WINDOW_SIZE = 10
+    TFT_HIDDEN_SIZE = 64
+    TFT_NUM_HEADS = 4
+    TFT_DROPOUT = 0.3
+    TFT_BATCH_SIZE = 32
+    TFT_EPOCHS = 100
+    TFT_LEARNING_RATE = 0.001
+
     # Parámetros de preprocesamiento
     TEST_SIZE = 0.15
     VALIDATION_SIZE = 0.15
@@ -120,6 +128,16 @@ class AIConfig:
     
     # Variable objetivo
     TARGET_VARIABLE = "Quantity"
+
+    # Orden canónico de entrada de todos los modelos. Este orden coincide
+    # exactamente con los CSV procesados después de retirar el target.
+    MODEL_FEATURES = [
+        "StockCode", "UnitPrice", "Country", "NumTransacciones",
+        "lag_1", "lag_7", "lag_14", "lag_30",
+        "rolling_mean_7", "rolling_std_7", "rolling_mean_30",
+        "Mes", "Día", "DíaSemana", "SemanaAño", "Trimestre",
+        "EsFinDeSemana", "MesNombre"
+    ]
     
     # Rutas de archivos procesados
     PROCESSED_DATA_PATH = DATASET_DIR / "processed" / "processed_data.csv"
@@ -160,14 +178,19 @@ class AIConfig:
     CNN_GRU_HISTORY_PATH = MODELS_DIR / "cnn_gru_history.pkl"
     CNN_GRU_METRICS_PATH = MODELS_DIR / "cnn_gru_metrics.json"
     CNN_GRU_LOG_PATH = LOGS_DIR / "cnn_gru.log"
-    
+
+    TFT_MODEL_PATH = MODELS_DIR / "tft.keras"
+    TFT_HISTORY_PATH = MODELS_DIR / "tft_history.pkl"
+    TFT_METRICS_PATH = MODELS_DIR / "tft_metrics.json"
+    TFT_LOG_PATH = LOGS_DIR / "tft.log"
+
     # Rutas para reportes de comparación
     MODEL_COMPARISON_PATH = REPORTS_DIR / "model_comparison.csv"
     BEST_MODEL_PATH = REPORTS_DIR / "best_model.json"
     
     # Parámetros de Cross Validation
     CV_FOLDS = 5
-    CV_SHUFFLE = True
+    CV_SHUFFLE = False  # El orden temporal no debe mezclarse
     CV_LOG_PATH = LOGS_DIR / "cross_validation.log"
     CV_RESULTS_JSON_PATH = REPORTS_DIR / "cross_validation_results.json"
     CV_RESULTS_CSV_PATH = REPORTS_DIR / "cross_validation_results.csv"
@@ -205,7 +228,10 @@ class AIConfig:
     # CNN-GRU
     TUNING_CNN_GRU_FILTERS = [[16, 32], [32, 64], [64, 128]]
     TUNING_CNN_GRU_GRU_UNITS = [32, 64, 128]
-    
+    # TFT
+    TUNING_TFT_HIDDEN_SIZE = [32, 64, 128]
+    TUNING_TFT_NUM_HEADS = [2, 4, 8]
+
     # Rutas para reportes de la fase 4
     FINAL_COMPARISON_PATH = REPORTS_DIR / "final_model_comparison.csv"
     FINAL_BEST_MODEL_PATH = REPORTS_DIR / "final_best_model.json"

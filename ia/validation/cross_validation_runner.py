@@ -1,6 +1,8 @@
 """
 Script principal para ejecutar validación cruzada en todos los modelos.
 """
+import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -18,7 +20,10 @@ from ia.validation.cross_validation import (
 from ia.utils.logger import setup_logger
 
 
-def run_all_models_cross_validation():
+SUPPORTED_MODELS = ["mlp", "lstm", "gru", "cnn_lstm", "cnn_gru", "tft"]
+
+
+def run_all_models_cross_validation(model_names=None):
     """
     Ejecuta validación cruzada K-Fold para todos los modelos del proyecto.
     """
@@ -40,14 +45,18 @@ def run_all_models_cross_validation():
         logger.info(f"Datos cargados: {X.shape[0]} muestras, {X.shape[1]} características")
         
         # Lista de modelos
-        model_names = ["mlp", "lstm", "gru", "cnn_lstm", "cnn_gru"]
+        selected_models = list(model_names) if model_names else list(SUPPORTED_MODELS)
+        invalid_models = sorted(set(selected_models) - set(SUPPORTED_MODELS))
+        if invalid_models:
+            raise ValueError(f"Modelos no reconocidos: {invalid_models}")
         all_results = {}
+        failures = {}
         
         # Inicializar validador
         validator = CrossValidator(config)
         
         # Ejecutar CV para cada modelo
-        for model_name in model_names:
+        for model_name in selected_models:
             try:
                 fold_results, summary = validator.run(model_name, X, y)
                 all_results[model_name] = {
@@ -58,7 +67,19 @@ def run_all_models_cross_validation():
                 logger.error(f"Error al ejecutar CV para {model_name}: {str(e)}")
                 import traceback
                 logger.error(traceback.format_exc())
-                continue
+                failures[model_name] = str(e)
+
+        if failures:
+            details = "; ".join(f"{model}: {error}" for model, error in failures.items())
+            raise RuntimeError(f"La validación cruzada quedó incompleta: {details}")
+
+        # Una ejecución aislada conserva los resultados anteriores de los
+        # demás modelos para mantener completa la comparación estadística.
+        if set(selected_models) != set(SUPPORTED_MODELS) and config.CV_RESULTS_JSON_PATH.exists():
+            with open(config.CV_RESULTS_JSON_PATH, "r", encoding="utf-8") as file:
+                previous_results = json.load(file)
+            previous_results.update(all_results)
+            all_results = previous_results
                 
         # Guardar resultados
         logger.info("Guardando resultados...")
@@ -86,8 +107,11 @@ def run_all_models_cross_validation():
         logger.error(f"ERROR GENERAL: {str(e)}")
         import traceback
         logger.error(traceback.format_exc())
-        sys.exit(1)
+        raise RuntimeError(f"Falló la validación cruzada: {e}") from e
 
 
 if __name__ == "__main__":
-    run_all_models_cross_validation()
+    parser = argparse.ArgumentParser(description="Validación temporal de modelos")
+    parser.add_argument("--models", nargs="+", choices=SUPPORTED_MODELS)
+    cli_args = parser.parse_args()
+    run_all_models_cross_validation(cli_args.models)

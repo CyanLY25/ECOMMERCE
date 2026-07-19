@@ -111,7 +111,7 @@ class ExecutionSummary:
         
         # Modelos entrenados
         md_lines.append("## 3. Modelos Entrenados\n")
-        model_names = ["MLP", "LSTM", "GRU", "CNN-LSTM", "CNN-GRU"]
+        model_names = ["MLP", "LSTM", "GRU", "CNN-LSTM", "CNN-GRU", "TFT"]
         for model_name in model_names:
             model_path = self.config.MODELS_DIR / f"{model_name.lower().replace('-', '_')}.keras"
             if model_path.exists():

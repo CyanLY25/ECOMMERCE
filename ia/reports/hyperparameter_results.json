@@ -42,5 +42,14 @@
             "learning_rate": 0.0001
         },
         "best_score": 4122.88525390625
+    },
+    "TFT": {
+        "best_parameters": {
+            "hidden_size": 64,
+            "num_heads": 2,
+            "dropout": 0.2,
+            "learning_rate": 0.001
+        },
+        "best_score": 3953.87548828125
     }
 }

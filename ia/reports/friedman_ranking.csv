@@ -1,6 +1,7 @@
 model,average_rank
 mlp,1.0
-lstm,2.6
-cnn_lstm,3.6
-cnn_gru,3.8
-gru,4.0
+lstm,3.0
+cnn_lstm,4.0
+cnn_gru,4.2
+gru,4.4
+tft,4.4

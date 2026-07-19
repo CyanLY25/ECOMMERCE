@@ -1,6 +1,6 @@
 {
     "model": "MLP",
-    "date": "2026-07-16T18:17:00.587129",
+    "date": "2026-07-19T12:05:46.148089",
     "metrics": {
         "rmse": 52.95338318762669,
         "mae": 18.95164680480957,
@@ -8,5 +8,26 @@
         "r2": 0.2858566641807556
     },
     "path": "C:\\Users\\milto\\OneDrive\\Desktop\\7 CICLO\\1 ING SOFTWARE\\WEBWO DE SANTONS\\ECOMMERCE\\backend\\model\\best_model.keras",
-    "version": "1.0"
+    "version": "1.1",
+    "feature_order": [
+        "StockCode",
+        "UnitPrice",
+        "Country",
+        "NumTransacciones",
+        "lag_1",
+        "lag_7",
+        "lag_14",
+        "lag_30",
+        "rolling_mean_7",
+        "rolling_std_7",
+        "rolling_mean_30",
+        "Mes",
+        "Día",
+        "DíaSemana",
+        "SemanaAño",
+        "Trimestre",
+        "EsFinDeSemana",
+        "MesNombre"
+    ],
+    "sequence_length": null
 }

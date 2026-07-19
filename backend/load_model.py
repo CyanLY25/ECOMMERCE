@@ -58,8 +58,8 @@ class BackendModelLoader:
                 self.logger.info(f"Modelo: {self.model_name}")
                 
                 # Definir sequence_length según el modelo
-                if self.model_name in ["LSTM", "GRU", "CNN-LSTM", "CNN-GRU"]:
-                    self.sequence_length = 10
+                if self.model_name in ["LSTM", "GRU", "CNN-LSTM", "CNN-GRU", "TFT"]:
+                    self.sequence_length = int(self.model_info.get("sequence_length") or 10)
                 self.logger.info(f"Longitud de secuencia: {self.sequence_length}")
         except Exception as e:
             self.logger.warning(f"No se pudo cargar model_info.json: {e}")
@@ -67,7 +67,16 @@ class BackendModelLoader:
         # 2. Cargar modelo
         try:
             if settings.BEST_MODEL_PATH.exists():
-                self.model = tf.keras.models.load_model(settings.BEST_MODEL_PATH)
+                custom_objects = None
+                if self.model_name == "TFT":
+                    from ia.training.tft import get_tft_custom_objects
+
+                    custom_objects = get_tft_custom_objects()
+                self.model = tf.keras.models.load_model(
+                    settings.BEST_MODEL_PATH,
+                    custom_objects=custom_objects,
+                    compile=False,
+                )
                 self.logger.info(f"Modelo cargado correctamente")
         except Exception as e:
             self.logger.error(f"Error al cargar el modelo: {e}")
